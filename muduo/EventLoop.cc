@@ -107,7 +107,12 @@ void EventLoop::queueInLoop(Functor cb)
 
 void EventLoop::wakeup()
 {
-
+    uint64_t one = 1;
+    ssize_t n = write(wakeupFd_, &one, sizeof one);
+    if(n != sizeof one)
+    {
+        LOG_ERROR("EventLoop::wakeup() writes %lu bytes instead of 8 \n", n);
+    }
 }
 
 void EventLoop::updateChannel(Channel *channel)
@@ -137,5 +142,18 @@ void EventLoop::handleRead()
 
 void EventLoop::doPendingFunctors()
 {
+    std::vector<Functor> functors;
+    callingPendingFunctors_ = true;
 
+    {
+        std::unique_lock<std::mutex> lock(mutex_);
+        functors.swap(pendingFunctors_);
+    }
+
+    for(const Functor& functor : functors)
+    {
+        functor();
+    }
+
+    callingPendingFunctors_ = false;
 }
