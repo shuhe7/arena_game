@@ -39,15 +39,15 @@ void Channel::tie(const std::shared_ptr<void> &obj)
     tied_ = true;
 }
 
-// void Channel::update()
-// {
-//     loop_->updateChannel(this);
-// }
+void Channel::update()
+{
+    loop_->updateChannel(this);
+}
 
-// void Channel::remove()
-// {
-//     loop_->removeChannel(this);
-// }
+void Channel::remove()
+{
+    loop_->removeChannel(this);
+}
 
 void Channel::handleEventWithGuard(Timestamp receiveTime)
 {
