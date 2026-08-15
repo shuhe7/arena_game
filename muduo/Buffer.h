@@ -21,7 +21,7 @@ public:
         return writerIndex_ - readerIndex_;
     }
 
-    size_t writeableBytes() const
+    size_t writableBytes() const
     {
         return buffer_.size() - writerIndex_;
     }
@@ -65,9 +65,9 @@ public:
         return retrieveAsString(readableBytes());
     }
 
-    void ensureWriteableBytes(size_t len)
+    void ensureWritableBytes(size_t len)
     {
-        if(writeableBytes() < len)
+        if(writableBytes() < len)
         {
             makeSpace(len);
         }
@@ -75,7 +75,7 @@ public:
 
     void append(const char* data, size_t len)
     {
-        ensureWriteableBytes(len);
+        ensureWritableBytes(len);
         std::copy(data, data + len, beginWrite());
         writerIndex_ += len;
     }
@@ -91,20 +91,21 @@ public:
     }
 
     ssize_t readFd(int fd, int* saveErrno);
+    ssize_t writeFd(int fd, int* saveErrno);
 private:
     char* begin()
     {
-        return &*buffer_.begin();
+        return buffer_.data();
     }
 
-    const char* begin() const 
+    const char* begin() const
     {
-        return &*buffer_.begin();
+        return buffer_.data();
     }
 
     void makeSpace(size_t len)
     {
-        if(writeableBytes() + prependableBytes() < len + kCheapPrepend)
+        if(writableBytes() + prependableBytes() < len + kCheapPrepend)
         {
             buffer_.resize(writerIndex_ + len);
         }
