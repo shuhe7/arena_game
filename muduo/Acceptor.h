@@ -18,7 +18,7 @@ public:
 
     void setNewConnectionCallback(const NewConnectionCallback& cb) { newConnectionCallback_ = cb;}
 
-    bool listenning() const { return listenning_; }
+    bool listening() const { return listening_; }
     void listen();
 private:
     void handleRead();
@@ -27,5 +27,5 @@ private:
     Socket acceptSocket_;
     Channel acceptChannel_;
     NewConnectionCallback newConnectionCallback_;
-    bool listenning_;
+    bool listening_;
 };
