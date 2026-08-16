@@ -51,7 +51,7 @@ void Channel::remove()
 
 void Channel::handleEventWithGuard(Timestamp receiveTime)
 {
-    LOG_INFO("channel handleEvent revents:%d\n", revents_);
+    LOG_DEBUG("channel handleEvent revents:%d\n", revents_);
 
     if((revents_ & EPOLLHUP) && !(revents_ & EPOLLIN))
     {
