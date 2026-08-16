@@ -57,7 +57,7 @@ private:
 
     ThreadInitCallback threadInitCallback_;
 
-    std::atomic_int started_;
+    std::atomic_int started_{0};
 
     int nextConnId_;
     ConnectionMap connections_;

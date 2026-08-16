@@ -35,6 +35,7 @@ void Thread::start()
     }));
 
     sem_wait(&sem);
+    sem_destroy(&sem);
 }
 
 void Thread::join()
