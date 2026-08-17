@@ -2,6 +2,7 @@
 #include "Logger.h"
 #include "Channel.h"
 #include "Poller.h"
+#include "TimerQueue.h"
 
 #include <sys/eventfd.h>
 #include <unistd.h>
@@ -24,7 +25,7 @@ int createEventfd()
 }
 
 EventLoop::EventLoop()
-    : looping_(false), quit_(false), callingPendingFunctors_(false), threadId_(CurrentThread::tid()), poller_(Poller::newDefaultPoller(this)), wakeupFd_(createEventfd()), wakeupChannel_(new Channel(this, wakeupFd_))
+    : looping_(false), quit_(false), callingPendingFunctors_(false), threadId_(CurrentThread::tid()), poller_(Poller::newDefaultPoller(this)), timerQueue_(new TimerQueue(this)), wakeupFd_(createEventfd()), wakeupChannel_(new Channel(this, wakeupFd_))
 {
     LOG_DEBUG("EventLoop created %p in thread %d \n", this, threadId_);
     if (t_loopInThisThread)
@@ -80,6 +81,28 @@ void EventLoop::quit()
     }
 }
 
+TimerId EventLoop::runAt(Timestamp time, TimerCallback cb)
+{
+    return timerQueue_->addTimer(std::move(cb), time, 0.0);
+}
+
+TimerId EventLoop::runAfter(double delay, TimerCallback cb)
+{
+    Timestamp time = Timestamp::now().addTime(delay);
+    return runAt(time, std::move(cb));
+}
+
+TimerId EventLoop::runEvery(double interval, TimerCallback cb)
+{
+    Timestamp time = Timestamp::now().addTime(interval);
+    return timerQueue_->addTimer(std::move(cb), time, interval);
+}
+
+void EventLoop::cancel(TimerId timerId)
+{
+    timerQueue_->cancel(timerId);
+}
+
 void EventLoop::runInLoop(Functor cb)
 {
     if(isInLoopThread())
@@ -111,7 +134,7 @@ void EventLoop::wakeup()
     ssize_t n = write(wakeupFd_, &one, sizeof one);
     if(n != sizeof one)
     {
-        LOG_ERROR("EventLoop::wakeup() writes %lu bytes instead of 8 \n", n);
+        LOG_ERROR("EventLoop::wakeup() writes %zd bytes instead of 8 \n", n);
     }
 }
 
@@ -130,13 +153,21 @@ bool EventLoop::hasChannel(Channel *channel)
     return poller_->hasChannel(channel);
 }
 
+void EventLoop::assertInLoopThread()
+{
+    if(!isInLoopThread())
+    {
+        LOG_FATAL("EventLoop::abortNotInLoopThread - EventLoop %p was created in threadId_ = %d, current thread id = %d\n", this, threadId_, CurrentThread::tid());
+    }
+}
+
 void EventLoop::handleRead()
 {
     uint64_t one = 1;
     ssize_t n = read(wakeupFd_, &one, sizeof one);
     if(n != sizeof one)
     {
-        LOG_ERROR("EventLoop::handleRead() reads %d bytes instead of 8\n", n);
+        LOG_ERROR("EventLoop::handleRead() reads %zd bytes instead of 8\n", n);
     }
 }
 

@@ -3,6 +3,8 @@
 #include "noncopyable.h"
 #include "Timestamp.h"
 #include "CurrentThread.h"
+#include "Timer.h"
+#include "TimerId.h"
 
 #include <functional>
 #include <vector>
@@ -12,6 +14,7 @@
 
 class Channel;
 class Poller;
+class TimerQueue;
 
 class EventLoop : noncopyable
 {
@@ -25,9 +28,14 @@ public:
     void quit();
 
     Timestamp pollReturnTime() const { return pollReturnTime_; }
-    
+
     void runInLoop(Functor cb);
     void queueInLoop(Functor cb);
+
+    TimerId runAt(Timestamp time, TimerCallback cb);
+    TimerId runAfter(double delay, TimerCallback cb);
+    TimerId runEvery(double interval, TimerCallback cb);
+    void cancel(TimerId timerId);
 
     void wakeup();
 
@@ -36,6 +44,8 @@ public:
     bool hasChannel(Channel* channel);
 
     bool isInLoopThread() const { return threadId_ == CurrentThread::tid(); }
+    void assertInLoopThread();
+
 private:
     void handleRead();
     void doPendingFunctors();
@@ -49,6 +59,7 @@ private:
 
     Timestamp pollReturnTime_;
     std::unique_ptr<Poller> poller_;
+    std::unique_ptr<TimerQueue> timerQueue_;
 
     int wakeupFd_;
     std::unique_ptr<Channel> wakeupChannel_;
