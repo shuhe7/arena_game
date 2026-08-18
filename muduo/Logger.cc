@@ -1,39 +1,51 @@
-#include <iostream>
-
 #include "Logger.h"
 #include "Timestamp.h"
 
-// 获取日志实例
-Logger &Logger::instance()
+#include <mutex>
+
+Logger& Logger::instance()
 {
     static Logger logger;
     return logger;
 }
 
-// 设置日志级别
-void Logger::setLogLevel(int level)
+void Logger::start()
 {
-    logLevel_ = level;
+    AsyncLogging::instance().start();
 }
 
-// 写日志 [级别信息] time : msg
-void Logger::log(std::string msg)
+void Logger::stop()
 {
-    switch (logLevel_)
+    AsyncLogging::instance().stop();
+}
+
+void Logger::log(int level, const char* msg, int len)
+{
+    static std::once_flag once;
+    std::call_once(once, []() { AsyncLogging::instance().start(); });
+
+    LogStream ls;
+    switch (level)
     {
     case INFO:
-        std::cout << "[INFO]";
+        ls << "[INFO] ";
         break;
     case ERROR:
-        std::cout << "[ERROR]";
+        ls << "[ERROR] ";
         break;
     case FATAL:
-        std::cout << "[FATAL]";
+        ls << "[FATAL] ";
         break;
     case DEBUG:
-        std::cout << "[DEBUG]";
+        ls << "[DEBUG] ";
+        break;
+    default:
+        ls << "[UNKNOWN] ";
         break;
     }
 
-    std::cout << Timestamp::now().toString() << " : " << msg << std::endl;
+    ls << Timestamp::now().toFormattedString() << " : ";
+    ls.append(msg, len);
+
+    AsyncLogging::instance().append(ls.buffer().data(), ls.buffer().length());
 }
