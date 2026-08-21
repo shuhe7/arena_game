@@ -14,7 +14,6 @@
 class AsyncLogging : noncopyable
 {
 public:
-    AsyncLogging(const std::string& basename, int flushInterval = 3);
     ~AsyncLogging();
 
     static AsyncLogging& instance();
@@ -23,6 +22,8 @@ public:
     void start();
     void stop();
 private:
+    AsyncLogging(const std::string& basename, int flushInterval = 3);
+    
     void threadFunc();
 
     static const int kLargeBuffer = 4000 * 1000;
