@@ -22,9 +22,10 @@ inline EventLoop* CheckLoopNotNull(EventLoop* loop)
 }
     
 
-TcpConnection::TcpConnection(EventLoop *loop, const std::string &nameArg, int sockfd, const InetAddress &localAddr, const InetAddress &peerAddr)
+TcpConnection::TcpConnection(EventLoop *loop, const std::string &nameArg, uint64_t idArg, int sockfd, const InetAddress &localAddr, const InetAddress &peerAddr)
     : loop_(CheckLoopNotNull(loop))
     , name_(nameArg)
+    , id_(idArg)
     , state_(kConnecting)
     , reading_(true)
     , socket_(new Socket(sockfd))

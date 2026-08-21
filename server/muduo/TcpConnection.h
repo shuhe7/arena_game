@@ -17,11 +17,12 @@ class Socket;
 class TcpConnection : noncopyable, public std::enable_shared_from_this<TcpConnection>
 {
 public:
-    TcpConnection(EventLoop* loop, const std::string& nameArg, int sockfd, const InetAddress& localAddr, const InetAddress& peerAddr);
+    TcpConnection(EventLoop* loop, const std::string& nameArg, uint64_t idArg, int sockfd, const InetAddress& localAddr, const InetAddress& peerAddr);
     ~TcpConnection();
 
     EventLoop* getLoop() const { return loop_; }
     const std::string& name() const { return name_; }
+    uint64_t id() const { return id_; }
     const InetAddress& localAddress() const { return localAddr_; };
     const InetAddress& peerAddress() const { return peerAddr_; };
 
@@ -54,6 +55,7 @@ private:
     
     EventLoop* loop_;
     const std::string name_;
+    const uint64_t id_;
     std::atomic_int state_;
     bool reading_;
 

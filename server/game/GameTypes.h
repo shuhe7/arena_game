@@ -50,6 +50,7 @@ namespace endian
 class BinaryWriter 
 {
 public:
+    BinaryWriter() { buf_.reserve(256); }
     void writeU8(uint8_t v)  { writeLE<uint8_t>(v); }
     void writeU16(uint16_t v) { writeLE<uint16_t>(v); }
     void writeU32(uint32_t v) { writeLE<uint32_t>(v); }
@@ -66,6 +67,11 @@ public:
         writeLE(len);
         buf_.reserve(buf_.size() + len);
         buf_.insert(buf_.end(), s.begin(), s.end());
+    }
+
+    void writeBytes(const uint8_t* data, size_t len)
+    {
+        buf_.insert(buf_.end(), data, data + len);
     }
 
     const std::vector<uint8_t>& data() const { return buf_; }
@@ -86,22 +92,25 @@ private:
             U bits;
             std::memcpy(&bits, &value, sizeof(T));
             writeLE(bits);
-            return;
         }
-        if constexpr (std::is_same_v<T, bool>)
+        else if constexpr (std::is_same_v<T, bool>)
         {
             buf_.push_back(value ? 1 : 0);
             return;
         }
-
-        typedef std::make_unsigned_t<T> U;
-        U val = static_cast<U>(value);
-
-        buf_.reserve(buf_.size() + sizeof(T));
-        for (size_t i = 0; i < sizeof(T); ++i) 
+        else
         {
-            buf_.push_back(static_cast<uint8_t>((val >> (i * 8)) & 0xFF));
+            typedef std::make_unsigned_t<T> U;
+            U val = static_cast<U>(value);
+
+            buf_.reserve(buf_.size() + sizeof(T));
+            for (size_t i = 0; i < sizeof(T); ++i) 
+            {
+                buf_.push_back(static_cast<uint8_t>((val >> (i * 8)) & 0xFF));
+            }
         }
+
+
     }
 
     std::vector<uint8_t> buf_;

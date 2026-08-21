@@ -15,14 +15,6 @@ namespace GameProtocol
         MSG_REGISTER_RSP = 0x0013,
     };
 
-    #pragma pack(push, 1)
-    struct FrameHeader
-    {
-        uint32_t total_len;
-        uint16_t msg_type;
-    };
-    #pragma pack(pop)
-
-    constexpr uint32_t HEADER_SIZE = sizeof(FrameHeader);
+    constexpr uint32_t HEADER_SIZE = 4 + 2;
     constexpr uint32_t MAX_FRAME = 65536;
 }
