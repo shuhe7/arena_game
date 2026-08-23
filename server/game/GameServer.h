@@ -5,6 +5,7 @@
 #include "../muduo/EventLoop.h"
 #include "../muduo/TcpConnection.h"
 #include "../muduo/Buffer.h"
+#include "../../common/BinaryStream.h"
 #include "GameTypes.h"
 
 #include <string>
