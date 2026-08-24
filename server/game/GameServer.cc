@@ -8,6 +8,7 @@
 #include <sstream>
 
 uint32_t GameServer::sNextUserId_ = 1;
+std::unordered_map<std::string, std::pair<std::string, uint32_t>> GameServer::sAccounts_;
 static const std::string kAccountFile = "accounts.txt";
 
 void GameServer::loadAccounts(const std::string& path)
@@ -62,7 +63,23 @@ void GameServer::init(const std::string& configPath)
 
     loadAccounts(kAccountFile);
 
+    running_ = false;
+
     LOG_INFO("GameServer initialized successfully\n");
+}
+
+void GameServer::start()
+{
+    LOG_INFO("GameServer starting...\n");
+    running_ = true;
+
+    server_->start();
+    mainLoop_->loop();
+}
+void GameServer::stop()
+{
+    running_ = false;
+    LOG_INFO("GameServer stopped\n");
 }
 
 void GameServer::onConnection(const TcpConnectionPtr &conn)
@@ -124,8 +141,10 @@ void GameServer::onMessage(const TcpConnectionPtr &conn, Buffer *buf, Timestamp 
             case GameProtocol::MSG_HEARTBEAT_REQ:
                 break;
             case GameProtocol::MSG_LOGIN_REQ:
+                handleLogin(conn, reader);
                 break;
             case GameProtocol::MSG_REGISTER_REQ:
+                handleRegister(conn, reader);
                 break;
             default:
                 break;

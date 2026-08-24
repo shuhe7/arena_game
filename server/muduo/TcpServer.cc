@@ -56,6 +56,7 @@ void TcpServer::newConnection(int sockfd, const InetAddress &peerAddr)
 {
     EventLoop* ioLoop = threadPool_->getNextLoop();
     char buf[64] = {0};
+    uint64_t connId = nextConnId_;
     snprintf(buf, sizeof buf, "-%s#%d", ipPort_.c_str(), nextConnId_);
     ++nextConnId_;
     std::string connName = name_ + buf;
@@ -71,7 +72,7 @@ void TcpServer::newConnection(int sockfd, const InetAddress &peerAddr)
     }
     InetAddress localAddr(local);
 
-    TcpConnectionPtr conn(new TcpConnection(ioLoop, connName, sockfd, localAddr, peerAddr));
+    TcpConnectionPtr conn(new TcpConnection(ioLoop, connName, connId, sockfd, localAddr, peerAddr));
     connections_[connName] = conn;
     conn->setConnectionCallback(connectionCallback_);
     conn->setMessageCallback(messageCallback_);
