@@ -19,6 +19,8 @@ public:
     static GameServer& instance();
 
     void init(const std::string& configPath);
+    void start();
+    void stop();
 
     void onConnection(const TcpConnectionPtr& conn);
     void onMessage(const TcpConnectionPtr& conn, Buffer* buf, Timestamp time);
@@ -49,4 +51,6 @@ private:
     std::unordered_map<uint32_t, uint64_t> userToConn_;
 
     int port_;
+
+    bool running_;
 };
