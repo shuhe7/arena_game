@@ -90,9 +90,9 @@ void EPollPoller::updateChannel(Channel *channel)
 void EPollPoller::removeChannel(Channel *channel)
 {
     int fd = channel->fd();
-
     int index = channel->index();
-    LOG_DEBUG("func=%s -> fd=%d events=%d index=%d \n", __FUNCTION__, channel->fd());
+    LOG_DEBUG("func=%s -> fd=%d events=%d index=%d \n", __FUNCTION__, channel->fd(), channel->events(), index);
+    
     channels_.erase(fd);
 
     if(index == kAdded)
