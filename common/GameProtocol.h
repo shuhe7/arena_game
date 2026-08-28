@@ -17,4 +17,6 @@ namespace GameProtocol
 
     constexpr uint32_t HEADER_SIZE = 4 + 2;
     constexpr uint32_t MAX_FRAME = 65536;
+    constexpr uint32_t kMaxStringBytes = 1024U;
+
 }
