@@ -127,9 +127,9 @@ private:
         value = 0;
         for (size_t index = 0; index < sizeof(T); ++index) 
         {
-            value |= static_cast<T>(data_[position_ + index]) << (index * 8U);
+            value |= static_cast<T>(data_[pos_ + index]) << (index * 8U);
         }
-        position_ += sizeof(T);
+        pos_ += sizeof(T);
         return true;
     }
 
