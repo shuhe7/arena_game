@@ -15,8 +15,12 @@ namespace GameProtocol
         MSG_REGISTER_RSP = 0x0013,
     };
 
-    constexpr uint32_t HEADER_SIZE = 4 + 2;
-    constexpr uint32_t MAX_FRAME = 65536;
-    constexpr uint32_t kMaxStringBytes = 1024U;
+    constexpr uint32_t kHeaderSize = 4 + 2;
+    constexpr uint32_t kMaxPayloadBytes = 8192;
+    constexpr uint32_t kMaxFrameSize = 64 * 1024;
+    constexpr uint32_t kMaxStringBytes = 1024;
 
+    static const uint32_t HEADER_SIZE = kHeaderSize;
+    static const uint32_t MAX_PAYLOAD = kMaxPayloadBytes;
+    static const uint32_t MAX_FRAME = kMaxFrameSize;
 }
