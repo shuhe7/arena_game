@@ -16,6 +16,7 @@ namespace GameMessages
         kNotAuthenticated = 4,
         kInvalidState = 5,
         kInvalidCommand = 6,
+        kInternalError = 7,
     };
 
     struct LoginRequest 
@@ -49,27 +50,27 @@ namespace GameMessages
         std::string errorMessage_;
     };
 
-    inline bool Encode(BinaryWriter& writer, const LoginRequest& value) 
+    inline bool encode(BinaryWriter& writer, const LoginRequest& value) 
     {
         return writer.writeString(value.userName_) && writer.writeString(value.password_);
     }
 
-    inline bool Decode(BinaryReader& reader, LoginRequest& value) 
+    inline bool decode(BinaryReader& reader, LoginRequest& value) 
     {
         return reader.readString(value.userName_) && reader.readString(value.password_) && reader.eof();
     }
 
-    inline bool Encode(BinaryWriter& writer, const RegisterRequest& value) 
+    inline bool encode(BinaryWriter& writer, const RegisterRequest& value) 
     {
         return writer.writeString(value.userName_) && writer.writeString(value.password_);
     }
 
-    inline bool Decode(BinaryReader& reader, RegisterRequest& value) 
+    inline bool decode(BinaryReader& reader, RegisterRequest& value) 
     {
         return reader.readString(value.userName_) && reader.readString(value.password_) && reader.eof();
     }
 
-    inline bool Encode(BinaryWriter& writer, const LoginResponse& value) 
+    inline bool encode(BinaryWriter& writer, const LoginResponse& value) 
     {
         writer.writeU8(value.success_ ? 1 : 0);
         if (value.success_)
@@ -82,7 +83,7 @@ namespace GameMessages
         return writer.writeString(value.errorMessage_);
     }
 
-    inline bool Decode(BinaryReader& reader, LoginResponse& value) 
+    inline bool decode(BinaryReader& reader, LoginResponse& value) 
     {
         uint8_t success = 0;
         if (!reader.readU8(success)) 
@@ -103,7 +104,7 @@ namespace GameMessages
         return true;
     }
 
-    inline bool Encode(BinaryWriter& writer, const RegisterResponse& value) 
+    inline bool encode(BinaryWriter& writer, const RegisterResponse& value) 
     {
         writer.writeU8(value.success_ ? 1 : 0);
         if (value.success_) 
@@ -115,7 +116,7 @@ namespace GameMessages
         return writer.writeString(value.errorMessage_);
     }
 
-    inline bool Decode(BinaryReader& reader, RegisterResponse& value) 
+    inline bool decode(BinaryReader& reader, RegisterResponse& value) 
     {
         uint8_t success = 0;
         if (!reader.readU8(success)) 
