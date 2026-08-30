@@ -7,37 +7,46 @@
 #include <fstream>
 #include <sstream>
 
-uint32_t GameServer::sNextUserId_ = 1;
-std::unordered_map<std::string, std::pair<std::string, uint32_t>> GameServer::sAccounts_;
 static const std::string kAccountFile = "accounts.txt";
 
-void GameServer::loadAccounts(const std::string& path)
+namespace
 {
-    std::fstream file(path);
-    if(!file.is_open()) { return; }
-
-    std::string line;
-    while(std::getline(file, line))
+    GameMessages::ErrorCode toErrorCode(AccountResult result)
     {
-        std::stringstream ss(line);
-        std::string user, pass;
-        uint32_t id;
-        ss >> user >> pass >> id;
-        if(!user.empty() && !pass.empty())
+        switch (result)
         {
-            sAccounts_[user] = {pass, id};
-            if (id >= sNextUserId_) { sNextUserId_ = id + 1; }
+        case AccountResult::kOk:
+            return GameMessages::ErrorCode::kNone;
+        case AccountResult::kDuplicateUser:
+            return GameMessages::ErrorCode::kDuplicateUserName;
+        case AccountResult::kInvalidCredentials:
+            return GameMessages::ErrorCode::kInvalidCredentials;
+        case AccountResult::kInvalidInput:
+            return GameMessages::ErrorCode::kInvalidCommand;
+        case AccountResult::kStorageError:
+            return GameMessages::ErrorCode::kInternalError;
         }
+
+        return GameMessages::ErrorCode::kInternalError;
     }
-    LOG_INFO("Loaded %lu accounts\n", (unsigned long)sAccounts_.size());
-}
-void GameServer::saveAccount(const std::string& user, const std::string& pass, uint32_t id)
-{
-    sAccounts_[user] = {pass, id};
-    std::ofstream file(kAccountFile, std::ios::app);
-    if(file.is_open())
+
+    const char* accountResultMessage(AccountResult result)
     {
-        file << user << " " << pass << " " << id << "\n";
+        switch (result)
+        {
+        case AccountResult::kDuplicateUser:
+            return "Username already exists";
+        case AccountResult::kInvalidCredentials:
+            return "Invalid username or password";
+        case AccountResult::kInvalidInput:
+            return "Invalid username or password format";
+        case AccountResult::kStorageError:
+            return "Account service temporarily unavailable";
+        case AccountResult::kOk:
+            return "";
+        }
+
+        return "Internal server error";
     }
 }
 
@@ -47,25 +56,28 @@ GameServer &GameServer::instance()
     return server;
 }
 
-void GameServer::init(const std::string& configPath)
+bool GameServer::init(const std::string& configPath)
 {
     ConfigMgr::instance().load(configPath);
-
     ConfigMgr::instance().getInt("port", &port_);
+
+    accountRepository_ = std::make_unique<AccountRepository>(kAccountFile);
+    if(!accountRepository_->load())
+    {
+        LOG_ERROR("Failed to load account repository\n");
+        return false;
+    }
 
     LOG_INFO("GameServer initializing on port %d\n", port_);
 
-    mainLoop_.reset(new EventLoop());
-    server_.reset(new TcpServer(mainLoop_.get(), InetAddress(port_, "0.0.0.0"), "GameServer", TcpServer::kReusePort));
+    mainLoop_ = std::make_unique<EventLoop>();
+    server_ = std::make_unique<TcpServer>(mainLoop_.get(), InetAddress(port_, "0.0.0.0"), "GameServer", TcpServer::kReusePort);
 
     server_->setConnectionCallback(std::bind(&GameServer::onConnection, this, std::placeholders::_1));
     server_->setMessageCallback(std::bind(&GameServer::onMessage, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
-    loadAccounts(kAccountFile);
-
-    running_ = false;
-
     LOG_INFO("GameServer initialized successfully\n");
+    return true;
 }
 
 void GameServer::start()
@@ -96,15 +108,9 @@ void GameServer::onConnection(const TcpConnectionPtr &conn)
     {
         LOG_INFO("Connection closed: %lu\n", static_cast<unsigned long>(conn->id()));
         {
+            sessionService_.remove(conn->id());
             std::lock_guard<std::mutex> lock(connMutex_);
             connections_.erase(conn->id());
-            auto it = connToPlayer_.find(conn->id());
-            if (it != connToPlayer_.end()) 
-            {
-                uint32_t uid = it->second.userId_;
-                if (uid > 0) userToConn_.erase(uid);
-                connToPlayer_.erase(it);
-            }
         }
     }
 }
@@ -154,7 +160,7 @@ void GameServer::onMessage(const TcpConnectionPtr &conn, Buffer *buf, Timestamp 
     }
 }
 
-void GameServer::sendToConnection(uint64_t connId, GameProtocol::MsgType msgType, BinaryWriter &payload)
+void GameServer::sendToConnection(uint64_t connId, GameProtocol::MsgType msgType, const BinaryWriter &payload)
 {
     TcpConnectionPtr conn;
     {
@@ -162,6 +168,15 @@ void GameServer::sendToConnection(uint64_t connId, GameProtocol::MsgType msgType
         auto it = connections_.find(connId);
         if(it == connections_.end()) return;
         conn = it->second;
+    }
+
+    const size_t maxPayloadSize = static_cast<size_t>(GameProtocol::MAX_FRAME - GameProtocol::HEADER_SIZE);
+
+    if (payload.size() > maxPayloadSize)
+    {
+        LOG_ERROR("Outgoing payload is too large: %zu\n", payload.size());
+        conn->shutdown();
+        return;
     }
 
     BinaryWriter frame;
@@ -173,84 +188,87 @@ void GameServer::sendToConnection(uint64_t connId, GameProtocol::MsgType msgType
 
 void GameServer::handleLogin(const TcpConnectionPtr& conn, BinaryReader& reader)
 {
-    BinaryWriter w;
+    GameMessages::LoginResponse response;
+    GameMessages::LoginRequest request;
 
-    std::string userName, passWord;
-    bool getUserName = reader.readString(userName);
-    bool getPassWord = reader.readString(passWord);
-
-    uint32_t userId = 0;
-
-    if(!getUserName || !getPassWord)
+    if(!GameMessages::decode(reader, request))
     {
-        w.writeU8(0);
-        w.writeString("BinaryReader read userName or passWord error");
-    }
-    else if(!verifyToken(userName, passWord, &userId))
-    {
-        w.writeU8(0);
-        w.writeString("Invalid username or password");    
+        response.errorCode_ = GameMessages::ErrorCode::kMalformedPayload;
+        response.errorMessage_ = "Malformed login request";
     }
     else
     {
-        {
-            std::lock_guard<std::mutex> lock(playerMutex_);
-            auto old_it = userToConn_.find(userId);
-            if (old_it != userToConn_.end()) 
-            {
-                connToPlayer_.erase(old_it->second);
-                userToConn_.erase(old_it);
-            }
+        Account account;
+        const AccountResult result = accountRepository_->Verify(request.userName_, request.password_, account);
 
-            PlayerConnection pc;
-            pc.userId_ = userId; 
-            pc.userName_ = userName; 
-            pc.isOnline_ = true; 
-            pc.elo_ = 1000;
-            connToPlayer_[conn->id()] = pc;
-            userToConn_[userId] = conn->id();
+        if(result != AccountResult::kOk)
+        {
+            response.errorCode_ = toErrorCode(result);
+            response.errorMessage_ = accountResultMessage(result);
         }
-        w.writeU8(1);
-        w.writeU32(userId);
-        w.writeString(userName);
-        w.writeU32(1000);
+        else
+        {
+            PlayerSession session;
+            session.userId_ = account.userId_;
+            session.userName_ = account.userName_;
+            session.elo_ = account.elo_;
+
+            sessionService_.bind(conn->id(), std::move(session));
+
+            response.success_ = true;
+            response.userId_ = account.userId_;
+            response.elo_ = account.elo_;
+            response.userName_ = account.userName_;
+
+            LOG_INFO("Login success: uid=%u\n", account.userId_);
+        }
     }
-    sendToConnection(conn->id(), GameProtocol::MSG_LOGIN_RSP, w);
+
+    BinaryWriter writer;
+    if(!GameMessages::encode(writer, response))
+    {
+        LOG_ERROR("Failed to encode login response\n");
+        conn->shutdown();
+        return;
+    }
+    sendToConnection(conn->id(), GameProtocol::MSG_LOGIN_RSP, writer);
 }
 void GameServer::handleRegister(const TcpConnectionPtr& conn, BinaryReader& reader)
 {
-    BinaryWriter w;
-    std::string userName, passWord;
-    bool getUserName = reader.readString(userName);
-    bool getPassWord = reader.readString(passWord);
+    GameMessages::RegisterResponse response;
+    GameMessages::RegisterRequest request;
 
-    if(!getUserName || !getPassWord)
+    if (!GameMessages::decode(reader, request))
     {
-        w.writeU8(0);
-        w.writeString("BinaryReader read userName or passWord error");        
-    }
-    else if (sAccounts_.find(userName) != sAccounts_.end()) 
-    {
-        w.writeU8(0);
-        w.writeString("Username already exists");
+        response.errorCode_ = GameMessages::ErrorCode::kMalformedPayload;
+        response.errorMessage_ = "Malformed register request";
     }
     else
     {
-        uint32_t userId = sNextUserId_++;
-        saveAccount(userName, passWord, userId);
+        Account account;
+        const AccountResult result = accountRepository_->Register(request.userName_, request.password_, account);
+        if(result != AccountResult::kOk)
+        {
+            response.errorCode_ = toErrorCode(result);
+            response.errorMessage_ = accountResultMessage(result);
+        }
+        else
+        {
+            response.success_ = true;
+            response.userId_ = account.userId_;
+            response.userName_ = account.userName_;
 
-        w.writeU8(1);
-        w.writeU32(userId);
-        w.writeString(userName);
+            LOG_INFO("Registration success: uid=%u\n", account.userId_);
+        }
     }
 
-    sendToConnection(conn->id(), GameProtocol::MSG_REGISTER_RSP, w);
-}
+    BinaryWriter writer;
+    if (!GameMessages::encode(writer, response))
+    {
+        LOG_ERROR("Failed to encode register response\n");
+        conn->shutdown();
+        return;
+    }
 
-bool GameServer::verifyToken(const std::string& userName, const std::string& passWord, uint32_t* id)
-{
-    auto it = sAccounts_.find(userName);
-    if(it == sAccounts_.end() || it->second.first != passWord) { return false; }
-    *id = it->second.second;
-    return true;
+    sendToConnection(conn->id(), GameProtocol::MSG_REGISTER_RSP, writer);
 }
