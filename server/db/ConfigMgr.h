@@ -12,6 +12,7 @@ public:
 
     bool getInt(const std::string& key, int* val) const;
 
+    std::string get(const std::string& key, const std::string& def = "") const;
 private:
     ConfigMgr() = default;
 

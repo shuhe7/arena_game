@@ -42,3 +42,9 @@ bool ConfigMgr::getInt(const std::string& key, int* val) const
     *val = std::stoi(it->second);
     return true;
 }
+
+std::string ConfigMgr::get(const std::string& key, const std::string& val = "") const 
+{
+    auto it = data_.find(key);
+    return it != data_.end() ? it->second : val;
+}
