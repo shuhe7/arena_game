@@ -50,6 +50,14 @@ namespace GameMessages
         std::string errorMessage_;
     };
 
+    struct MatchFoundNotification
+    {
+        uint64_t roomId_ = 0;
+        uint32_t opponentUserId_ = 0;
+        std::string opponentUserName_;
+        uint32_t opponentElo_ = 0;
+    };
+
     inline bool encode(BinaryWriter& writer, const LoginRequest& value) 
     {
         return writer.writeString(value.userName_) && writer.writeString(value.password_);
@@ -136,4 +144,23 @@ namespace GameMessages
         value.errorCode_ = static_cast<ErrorCode>(errorCode);
         return true;
     }
+
+    inline bool encode(BinaryWriter& writer, const MatchFoundNotification& value)
+    {
+        writer.writeU64(value.roomId_);
+        writer.writeU32(value.opponentUserId_);
+
+        if (!writer.writeString(value.opponentUserName_))
+        {
+            return false;
+        }
+
+        writer.writeU32(value.opponentElo_);
+        return true;
+    }
+
+    inline bool decode(BinaryReader& reader, MatchFoundNotification& value)
+    {
+        return reader.readU64(value.roomId_) && reader.readU32(value.opponentUserId_) && reader.readString(value.opponentUserName_) && reader.readU32(value.opponentElo_) && reader.eof();
+    } 
 }
