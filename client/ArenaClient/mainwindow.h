@@ -28,12 +28,14 @@ public:
     void switchTo(Scene scene);
 
     // Shared state
-    void setUserInfo(uint32_t uid, const QString& name);
+    void setUserInfo(uint32_t uid, const QString& name, uint32_t elo);
 
     uint32_t    userId() const { return userId_; }
-    QString     username() const { return username_; }
+    QString     username() const { return userName_; }
 
     GameClient* getClient() { return client_.get(); }
+
+    void enterLobby(uint32_t userId, const QString& userName, uint32_t elo);
 
 signals:
     void userLoggedIn(uint32_t uid, const QString& name);
@@ -51,5 +53,6 @@ private:
     std::unique_ptr<GameClient> client_;
 
     uint32_t userId_ = 0;
-    QString  username_;
+    QString  userName_;
+    uint32_t elo_ = 0;
 };
