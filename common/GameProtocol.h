@@ -13,6 +13,9 @@ namespace GameProtocol
         MSG_LOGIN_RSP = 0x0011,
         MSG_REGISTER_REQ = 0x0012,
         MSG_REGISTER_RSP = 0x0013,
+
+        MSG_MATCH_JOIN_REQ = 0x0030,
+        MSG_MATCH_JOIN_RSP = 0x0031,
     };
 
     constexpr uint32_t kHeaderSize = 4 + 2;

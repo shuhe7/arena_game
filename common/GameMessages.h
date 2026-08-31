@@ -58,6 +58,18 @@ namespace GameMessages
         uint32_t opponentElo_ = 0;
     };
 
+    struct MatchJoinResponse
+    {
+        bool accepted_ = false;
+        ErrorCode errorCode_ = ErrorCode::kNone;
+        std::string errorMessage_;
+    };
+
+    struct MatchJoinRequest
+    {
+
+    };
+
     inline bool encode(BinaryWriter& writer, const LoginRequest& value) 
     {
         return writer.writeString(value.userName_) && writer.writeString(value.password_);
@@ -162,5 +174,54 @@ namespace GameMessages
     inline bool decode(BinaryReader& reader, MatchFoundNotification& value)
     {
         return reader.readU64(value.roomId_) && reader.readU32(value.opponentUserId_) && reader.readString(value.opponentUserName_) && reader.readU32(value.opponentElo_) && reader.eof();
-    } 
+    }
+
+    inline bool encode(BinaryWriter& writer, const MatchJoinResponse& value)
+    {
+        writer.writeU8(value.accepted_ ? 1 : 0);
+
+        if (value.accepted_)
+        {
+            return true;
+        }
+
+        writer.writeU16(static_cast<uint16_t>(value.errorCode_));
+        return writer.writeString(value.errorMessage_);
+    }
+
+    inline bool decode(BinaryReader& reader, MatchJoinResponse& value)
+    {
+        uint8_t accepted = 0;
+        if (!reader.readU8(accepted) || (accepted != 0 && accepted != 1))
+        {
+            return false;
+        }
+
+        value = MatchJoinResponse{};
+        value.accepted_ = accepted != 0;
+
+        if (value.accepted_)
+        {
+            return reader.eof();
+        }
+
+        uint16_t errorCode = 0;
+        if (!reader.readU16(errorCode) || !reader.readString(value.errorMessage_) || !reader.eof())
+        {
+            return false;
+        }
+
+        value.errorCode_ = static_cast<ErrorCode>(errorCode);
+        return true;
+    }
+
+    inline bool encode(BinaryWriter&, const MatchJoinRequest&)
+    {
+        return true;
+    }
+
+    inline bool decode(BinaryReader& reader, MatchJoinRequest&)
+    {
+        return reader.eof();
+    }
 }
