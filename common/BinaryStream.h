@@ -1,10 +1,13 @@
 #pragma once
 
+#include "GameProtocol.h"
+
 #include <vector>
 #include <string>
 #include <cstdint>
 #include <cstring>
 #include <type_traits>
+#include <limits>
 
 class BinaryWriter 
 {

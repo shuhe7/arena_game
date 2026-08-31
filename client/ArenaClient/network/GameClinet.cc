@@ -35,7 +35,7 @@ bool GameClient::isConnected() const
     return socket_->state() == QAbstractSocket::ConnectedState;
 }
 
-void GameClient::sendMessage(GameProtocol::MsgType type, BinaryWriter& payload)
+void GameClient::sendMessage(GameProtocol::MsgType type, const BinaryWriter& payload)
 {
     if (!isConnected())
     {

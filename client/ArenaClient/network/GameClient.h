@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../../../../common/GameProtocol.h"
-#include "../../../../common/BinaryStream.h"
+#include "../../../common/GameProtocol.h"
+#include "../../../common/BinaryStream.h"
 
 #include <cstdint>
 #include <functional>
@@ -21,7 +21,7 @@ public:
     void disconnect();
     bool isConnected() const;
 
-    void sendMessage(GameProtocol::MsgType type, BinaryWriter& payload);
+    void sendMessage(GameProtocol::MsgType type, const BinaryWriter& payload);
 
     typedef std::function<void(BinaryReader&)> MsgHandler;
     void registerHandler(GameProtocol::MsgType type, MsgHandler handler);

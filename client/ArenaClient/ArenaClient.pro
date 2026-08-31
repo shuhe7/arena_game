@@ -11,11 +11,13 @@ CONFIG += c++17
 SOURCES += \
     main.cpp \
     mainwindow.cpp \
-    network/GameClinet.cc
+    network/GameClinet.cc \
+    scenes/LoginScene.cc
 
 HEADERS += \
     mainwindow.h \
-    network/GameClient.h
+    network/GameClient.h \
+    scenes/LoginScene.h
 
 FORMS += \
     mainwindow.ui
