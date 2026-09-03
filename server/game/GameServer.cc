@@ -107,6 +107,15 @@ void GameServer::onConnection(const TcpConnectionPtr &conn)
     else
     {
         LOG_INFO("Connection closed: %lu\n", static_cast<unsigned long>(conn->id()));
+        const PlayerSession* session = sessionService_.findByConnection(conn->id());
+
+        if(session != nullptr)
+        {
+            const uint32_t userId = session->userId_;
+            matchQueue_.cancel(userId);
+            sessionService_.remove(conn->id());
+        }
+            
         {
             sessionService_.remove(conn->id());
             std::lock_guard<std::mutex> lock(connMutex_);
@@ -151,6 +160,9 @@ void GameServer::onMessage(const TcpConnectionPtr &conn, Buffer *buf, Timestamp 
                 break;
             case GameProtocol::MSG_REGISTER_REQ:
                 handleRegister(conn, reader);
+                break;
+            case GameProtocol::MSG_MATCH_JOIN_REQ:
+                handleMatchJoin(conn, reader);
                 break;
             default:
                 break;
@@ -271,4 +283,58 @@ void GameServer::handleRegister(const TcpConnectionPtr& conn, BinaryReader& read
     }
 
     sendToConnection(conn->id(), GameProtocol::MSG_REGISTER_RSP, writer);
+}
+
+void GameServer::handleMatchJoin(const TcpConnectionPtr& conn, BinaryReader& reader)
+{
+    GameMessages::MatchJoinRequest request;
+    GameMessages::MatchJoinResponse response;
+
+    if (!GameMessages::decode(reader, request))
+    {
+        response.errorCode_ = GameMessages::ErrorCode::kMalformedPayload;
+        response.errorMessage_ = "Malformed match join payload";
+    }
+    else
+    {
+        const PlayerSession* session = sessionService_.findByConnection(conn->id());
+        if(session == nullptr)
+        {
+            response.errorCode_ = GameMessages::ErrorCode::kNotAuthenticated;
+            response.errorMessage_ = "Login is required before matchmaking";
+        }
+        else if(session->roomId_ != 0)
+        {
+            response.errorCode_ = GameMessages::ErrorCode::kInvalidState;
+            response.errorMessage_ = "Already in a room";            
+        }
+        else
+        {
+            MatchTicket ticket;
+            ticket.userId_ = session->userId_;
+            ticket.elo_ = session->elo_;
+            ticket.joinedAt_ = MatchClock::now();
+
+            if(!matchQueue_.join(ticket))
+            {
+                response.errorCode_ = GameMessages::ErrorCode::kInvalidState;
+                response.errorMessage_ = "Already in matchmaking queue";
+            }
+            else
+            {
+                response.accepted_ = true;
+
+                LOG_INFO("Player %u joined matchmaking queue (elo=%u)\n", session->userId_, session->elo_);
+            }
+        }
+    }
+
+    BinaryWriter writer;
+    if(!GameMessages::encode(writer, response))
+    {
+        LOG_ERROR("Failed to encode match join response\n");
+        return;        
+    }
+
+    sendToConnection(conn->id(), GameProtocol::MSG_MATCH_JOIN_RSP, writer);
 }
