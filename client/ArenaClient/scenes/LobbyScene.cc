@@ -19,6 +19,15 @@ void LobbyScene::setPlayerInfo(uint32_t userId, const QString &userName, uint32_
     playerEloLabel_->setText(QString("ELO: %1").arg(elo));
 }
 
+void LobbyScene::onMatchButtonClicked()
+{
+    matchButton_->setEnabled(false);
+    matchButton_->setText("REQUESTING...");
+    matchStatusLabel_->setText("REQUESTING MATCH...");
+
+    emit matchRequested();
+}
+
 void LobbyScene::setupUi()
 {
     setObjectName("lobbyScene");
@@ -61,12 +70,23 @@ void LobbyScene::setupUi()
     matchButton_->setObjectName("matchButton");
     matchButton_->setMinimumHeight(48);
 
+    matchStatusLabel_ = new QLabel("READY // AWAITING COMMAND", this);
+    matchStatusLabel_->setObjectName("matchStatusLabel");
+    matchStatusLabel_->setAlignment(Qt::AlignCenter);
+    matchStatusLabel_->setStyleSheet(
+        "color: #7F8A9B;"
+        "font-size: 12px;"
+        "font-weight: 600;"
+        "letter-spacing: 1px;"
+        );
+
     rootLayout->addWidget(titleLabel);
     rootLayout->addWidget(subtitleLabel);
     rootLayout->addSpacing(16);
     rootLayout->addWidget(playerCard);
     rootLayout->addStretch();
     rootLayout->addWidget(matchButton_);
+    rootLayout->addWidget(matchStatusLabel_);
 
     setStyleSheet(R"(
         #lobbyScene {
@@ -115,6 +135,5 @@ void LobbyScene::setupUi()
         }
     )");
 
-    connect(matchButton_, &QPushButton::clicked,
-            this, &LobbyScene::matchRequested);
+    connect(matchButton_, &QPushButton::clicked, this, &LobbyScene::onMatchButtonClicked);
 }

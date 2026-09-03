@@ -1,7 +1,7 @@
 #include "LoginScene.h"
 #include "../mainwindow.h"
 #include "../network/GameClient.h"
-#include "../../common/GameMessages.h"
+#include "../../../common/GameMessages.h"
 
 #include <QFont>
 #include <QGroupBox>
@@ -280,10 +280,9 @@ void LoginScene::setupNetworkHandlers()
             return;
         }
 
-        mainWindow_->setUserInfo(response.userId_, QString::fromStdString(response.userName_));
+        pendingAction_ = PendingAction::kNone;
 
-        loginStatus_->setStyleSheet("color: #44FF44;");
-        loginStatus_->setText(QString("Welcome, %1.").arg(QString::fromStdString(response.userName_)));
+        mainWindow_->enterLobby(response.userId_,QString::fromStdString(response.userName_),response.elo_);
     });
 
     client->registerHandler(GameProtocol::MSG_REGISTER_RSP, [this](BinaryReader& reader){

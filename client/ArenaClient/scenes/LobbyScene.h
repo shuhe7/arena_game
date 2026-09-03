@@ -15,6 +15,8 @@ public:
     void setPlayerInfo(uint32_t userId, const QString& userName, uint32_t elo);
 signals:
     void matchRequested();
+private slots:
+    void onMatchButtonClicked();
 private:
     void setupUi();
 
@@ -22,4 +24,5 @@ private:
     QLabel* playerIdLabel_ = nullptr;
     QLabel* playerEloLabel_ = nullptr;
     QPushButton* matchButton_ = nullptr;
+    QLabel* matchStatusLabel_ = nullptr;
 };
