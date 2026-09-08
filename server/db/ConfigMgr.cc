@@ -14,7 +14,7 @@ bool ConfigMgr::load(const std::string& path)
     std::fstream file(path);
     if(!file.is_open())
     {
-        LOG_FATAL("[ConfigMgr] Cannot open config file: %s\n", path);
+        LOG_FATAL("[ConfigMgr] Cannot open config file: %s\n", path.c_str());
     }
 
     std::string line;
@@ -37,7 +37,7 @@ bool ConfigMgr::getInt(const std::string& key, int* val) const
     auto it = data_.find(key);
     if(it == data_.end())
     {
-        LOG_FATAL("[ConfigMgr] Cannot find key: %s\n", key);
+        LOG_FATAL("[ConfigMgr] Cannot find key: %s\n", key.c_str());
     }
     *val = std::stoi(it->second);
     return true;
