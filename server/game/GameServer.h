@@ -10,7 +10,8 @@
 #include "AccountRepository.h"
 #include "SessionService.h"
 #include "../../common/GameMessages.h"
-#include "MatchQueue.h"
+#include "Room.h"
+#include "MatchmakingService.h"
 
 #include <string>
 #include <unordered_map>
@@ -36,9 +37,11 @@ public:
     void handleLogin(const TcpConnectionPtr& conn, BinaryReader& reader);
     void handleRegister(const TcpConnectionPtr& conn, BinaryReader& reader);
 private:
-    GameServer() = default;
+    GameServer();
 
     void handleMatchJoin(const TcpConnectionPtr& conn, BinaryReader& reader);
+
+    void processMatchmakingTick();
 
     std::unique_ptr<EventLoop> mainLoop_;
     std::unique_ptr<TcpServer> server_;
@@ -48,8 +51,8 @@ private:
 
     std::unique_ptr<AccountRepository> accountRepository_;
     SessionService sessionService_;
-
-    MatchQueue matchQueue_;
+    RoomService roomService_;
+    MatchmakingService matchmakingService_;
 
     int port_;
 
