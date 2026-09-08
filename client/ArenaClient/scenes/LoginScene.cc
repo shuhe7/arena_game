@@ -49,7 +49,7 @@ void LoginScene::onLoginClicked()
     pendingPassword_ = password;
 
     loginStatus_->setText("Conncting...");
-    client->connect("192.168.1.90", 9999);
+    client->connect("192.168.255.128", 9999);
 }
 
 void LoginScene::onRegisterClicked()
@@ -88,7 +88,7 @@ void LoginScene::onRegisterClicked()
     pendingPassword_ = password;
 
     registerStatus_->setText("Connecting...");
-    client->connect("192.168.1.90", 9999);
+    client->connect("192.168.255.128", 9999);
 }
 
 void LoginScene::switchToRegister()
