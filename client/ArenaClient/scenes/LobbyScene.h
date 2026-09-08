@@ -13,6 +13,10 @@ public:
     explicit LobbyScene(QWidget* parent = nullptr);
 
     void setPlayerInfo(uint32_t userId, const QString& userName, uint32_t elo);
+
+    void showMatchmakingQueued();
+    void showMatchJoinRejected(const QString& errorMessage);
+    void showMatchFound(const QString& opponentUserName, uint32_t opponentElo);
 signals:
     void matchRequested();
 private slots:

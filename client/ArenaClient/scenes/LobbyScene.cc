@@ -19,6 +19,25 @@ void LobbyScene::setPlayerInfo(uint32_t userId, const QString &userName, uint32_
     playerEloLabel_->setText(QString("ELO: %1").arg(elo));
 }
 
+void LobbyScene::showMatchmakingQueued()
+{
+    matchButton_->setEnabled(false);
+    matchButton_->setText("MATCHMAKING...");
+    matchStatusLabel_->setText("SEARCHING FOR OPPONENT...");
+}
+void LobbyScene::showMatchJoinRejected(const QString& errorMessage)
+{
+    matchButton_->setEnabled(true);
+    matchButton_->setText("START MATCHMAKING");
+    matchStatusLabel_->setText(QString("MATCH REQUEST FAILED: %1").arg(errorMessage));
+}
+void LobbyScene::showMatchFound(const QString& opponentUserName, uint32_t opponentElo)
+{
+    matchButton_->setEnabled(false);
+    matchButton_->setText("MATCH FOUND");
+    matchStatusLabel_->setText(QString("MATCH FOUND // VS %1 (ELO %2)").arg(opponentUserName).arg(opponentElo));
+}
+
 void LobbyScene::onMatchButtonClicked()
 {
     matchButton_->setEnabled(false);

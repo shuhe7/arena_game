@@ -3,6 +3,7 @@
 #include "network/GameClient.h"
 #include "scenes/LoginScene.h"
 #include "scenes/LobbyScene.h"
+#include "../../common/GameMessages.h"
 
 #include <QStackedWidget>
 
@@ -63,6 +64,45 @@ void MainWindow::initUi()
     setCentralWidget(stack_);
     setWindowTitle("Arena PvP");
     resize(960, 600);
+
+    connect(lobbyScene_, &LobbyScene::matchRequested, this, [this](){
+        GameMessages::MatchJoinRequest request;
+        BinaryWriter payload;
+        if(!GameMessages::encode(payload, request))
+        {
+            lobbyScene_->showMatchJoinRejected("Failed to encode match request");
+            return;
+        }
+
+        client_->sendMessage(GameProtocol::MSG_MATCH_JOIN_REQ, payload);
+    });
+
+    client_->registerHandler(GameProtocol::MSG_MATCH_JOIN_RSP, [this](BinaryReader& reader){
+        GameMessages::MatchJoinResponse response;
+        if(!GameMessages::decode(reader, response))
+        {
+            lobbyScene_->showMatchJoinRejected("Malformed match join response");
+            return;
+        }
+
+        if(!response.accepted_)
+        {
+            lobbyScene_->showMatchJoinRejected(QString::fromStdString(response.errorMessage_));
+            return;
+        }
+
+        lobbyScene_->showMatchmakingQueued();
+    });
+
+    client_->registerHandler(GameProtocol::MSG_MATCH_FOUND_NTF, [this](BinaryReader& reader){
+        GameMessages::MatchFoundNotification notification;
+        if(!GameMessages::decode(reader, notification))
+        {
+            return;
+        }
+
+        lobbyScene_->showMatchFound((QString::fromStdString(notification.opponentUserName_)), notification.opponentElo_);
+    });
 
     switchTo(SCENE_LOGIN);
 }
