@@ -1,25 +1,15 @@
 #include "SessionService.h"
 
-void SessionService::bind(uint64_t connectionId, PlayerSession session)
+bool SessionService::bind(uint64_t connectionId, PlayerSession session)
 {
-    const auto currentSession = sessionsByConnection_.find(connectionId);
-    if(currentSession != sessionsByConnection_.end())
+    if(connectionId == 0 || session.userId_ == 0 || sessionsByConnection_.find(connectionId) != sessionsByConnection_.end() || connectionByUserId_.find(session.userId_) != connectionByUserId_.end())
     {
-        const auto currentUser = connectionByUserId_.find(currentSession->second.userId_);
-        if(currentUser != connectionByUserId_.end() && currentUser->second == connectionId)
-        {
-            connectionByUserId_.erase(currentUser);
-        }
-    }
-
-    const auto oldConnection = connectionByUserId_.find(session.userId_);
-    if(oldConnection != connectionByUserId_.end() && oldConnection->second != connectionId)
-    {
-        sessionsByConnection_.erase(oldConnection->second);
+        return false;
     }
 
     connectionByUserId_[session.userId_] = connectionId;
     sessionsByConnection_[connectionId] = std::move(session);
+    return true;
 }
 void SessionService::remove(uint64_t connectionId)
 {

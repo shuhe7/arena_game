@@ -15,7 +15,7 @@ struct PlayerSession
 class SessionService
 {
 public:
-    void bind(uint64_t connectionId, PlayerSession session);
+    bool bind(uint64_t connectionId, PlayerSession session);
     void remove(uint64_t connectionId);
 
     PlayerSession* findByConnection(uint64_t connectionId);

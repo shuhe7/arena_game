@@ -56,6 +56,10 @@ GameServer &GameServer::instance()
     return server;
 }
 
+GameServer::GameServer()
+    : matchmakingService_(roomService_, sessionService_)
+{}
+
 bool GameServer::init(const std::string& configPath)
 {
     ConfigMgr::instance().load(configPath);
@@ -75,6 +79,8 @@ bool GameServer::init(const std::string& configPath)
 
     server_->setConnectionCallback(std::bind(&GameServer::onConnection, this, std::placeholders::_1));
     server_->setMessageCallback(std::bind(&GameServer::onMessage, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+
+    mainLoop_->runEvery(0.1, std::bind(&GameServer::processMatchmakingTick, this));
 
     LOG_INFO("GameServer initialized successfully\n");
     return true;
@@ -112,8 +118,7 @@ void GameServer::onConnection(const TcpConnectionPtr &conn)
         if(session != nullptr)
         {
             const uint32_t userId = session->userId_;
-            matchQueue_.cancel(userId);
-            sessionService_.remove(conn->id());
+            matchmakingService_.cancel(userId);
         }
             
         {
@@ -210,29 +215,43 @@ void GameServer::handleLogin(const TcpConnectionPtr& conn, BinaryReader& reader)
     }
     else
     {
-        Account account;
-        const AccountResult result = accountRepository_->Verify(request.userName_, request.password_, account);
-
-        if(result != AccountResult::kOk)
+        if(sessionService_.findByConnection(conn->id()) != nullptr)
         {
-            response.errorCode_ = toErrorCode(result);
-            response.errorMessage_ = accountResultMessage(result);
+            response.errorCode_ = GameMessages::ErrorCode::kInvalidState;
+            response.errorMessage_ = "Connection is already authenticated";
         }
         else
         {
-            PlayerSession session;
-            session.userId_ = account.userId_;
-            session.userName_ = account.userName_;
-            session.elo_ = account.elo_;
+            Account account;
+            const AccountResult result = accountRepository_->Verify(request.userName_, request.password_, account);
 
-            sessionService_.bind(conn->id(), std::move(session));
+            if(result != AccountResult::kOk)
+            {
+                response.errorCode_ = toErrorCode(result);
+                response.errorMessage_ = accountResultMessage(result);
+            }
+            else
+            {
+                PlayerSession session;
+                session.userId_ = account.userId_;
+                session.userName_ = account.userName_;
+                session.elo_ = account.elo_;
 
-            response.success_ = true;
-            response.userId_ = account.userId_;
-            response.elo_ = account.elo_;
-            response.userName_ = account.userName_;
+                if(!sessionService_.bind(conn->id(), std::move(session)))
+                {
+                    response.errorCode_ = GameMessages::ErrorCode::kInvalidState;
+                    response.errorMessage_ = "Account is already online";
+                }
+                else
+                {
+                    response.success_ = true;
+                    response.userId_ = account.userId_;
+                    response.elo_ = account.elo_;
+                    response.userName_ = account.userName_;
 
-            LOG_INFO("Login success: uid=%u\n", account.userId_);
+                    LOG_INFO("Login success: uid=%u\n", account.userId_);
+                }
+            }
         }
     }
 
@@ -315,7 +334,7 @@ void GameServer::handleMatchJoin(const TcpConnectionPtr& conn, BinaryReader& rea
             ticket.elo_ = session->elo_;
             ticket.joinedAt_ = MatchClock::now();
 
-            if(!matchQueue_.join(ticket))
+            if(!matchmakingService_.join(ticket))
             {
                 response.errorCode_ = GameMessages::ErrorCode::kInvalidState;
                 response.errorMessage_ = "Already in matchmaking queue";
@@ -337,4 +356,57 @@ void GameServer::handleMatchJoin(const TcpConnectionPtr& conn, BinaryReader& rea
     }
 
     sendToConnection(conn->id(), GameProtocol::MSG_MATCH_JOIN_RSP, writer);
+}
+
+void GameServer::processMatchmakingTick()
+{
+    const auto events = matchmakingService_.tick(MatchClock::now());
+
+    for(const MatchFoundEvent& event : events)
+    {
+        const uint64_t firstConnectionId = sessionService_.findConnectionByUserId(event.pair_.first_.userId_);
+        const uint64_t secondConnectionId = sessionService_.findConnectionByUserId(event.pair_.second_.userId_);
+
+        const PlayerSession* firstSession = sessionService_.findByConnection(firstConnectionId);
+        const PlayerSession* secondSession = sessionService_.findByConnection(secondConnectionId);
+
+        if(firstSession == nullptr || secondSession == nullptr)
+        {
+            LOG_ERROR("%s", "Matched session disappeared before notification\n");
+            continue;
+        }
+
+        const GameMessages::MatchFoundNotification firstNotification{
+            event.roomId_,
+            secondSession->userId_,
+            secondSession->userName_,
+            secondSession->elo_
+        };
+        const GameMessages::MatchFoundNotification secondNotification{
+            event.roomId_,
+            firstSession->userId_,
+            firstSession->userName_,
+            firstSession->elo_
+        };
+
+        BinaryWriter firstWriter;
+        if(!GameMessages::encode(firstWriter, firstNotification))
+        {
+            LOG_ERROR("%s", "Failed to encode first match notification\n");
+        }
+        else
+        {
+            sendToConnection(firstConnectionId, GameProtocol::MSG_MATCH_FOUND_NTF, firstWriter);
+        }
+
+        BinaryWriter secondWriter;
+        if(!GameMessages::encode(secondWriter, secondNotification))
+        {
+            LOG_ERROR("%s", "Failed to encode second match notification\n");
+        }
+        else
+        {
+            sendToConnection(secondConnectionId, GameProtocol::MSG_MATCH_FOUND_NTF, secondWriter);
+        }
+    }
 }
