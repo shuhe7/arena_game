@@ -16,6 +16,7 @@ namespace GameProtocol
 
         MSG_MATCH_JOIN_REQ = 0x0030,
         MSG_MATCH_JOIN_RSP = 0x0031,
+        MSG_MATCH_FOUND_NTF = 0x0032,
     };
 
     constexpr uint32_t kHeaderSize = 4 + 2;
