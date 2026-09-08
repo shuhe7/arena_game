@@ -113,7 +113,6 @@ void GameServer::onConnection(const TcpConnectionPtr &conn)
         {
             const uint32_t userId = session->userId_;
             matchQueue_.cancel(userId);
-            sessionService_.remove(conn->id());
         }
             
         {
@@ -210,29 +209,43 @@ void GameServer::handleLogin(const TcpConnectionPtr& conn, BinaryReader& reader)
     }
     else
     {
-        Account account;
-        const AccountResult result = accountRepository_->Verify(request.userName_, request.password_, account);
-
-        if(result != AccountResult::kOk)
+        if(sessionService_.findByConnection(conn->id()) != nullptr)
         {
-            response.errorCode_ = toErrorCode(result);
-            response.errorMessage_ = accountResultMessage(result);
+            response.errorCode_ = GameMessages::ErrorCode::kInvalidState;
+            response.errorMessage_ = "Connection is already authenticated";
         }
         else
         {
-            PlayerSession session;
-            session.userId_ = account.userId_;
-            session.userName_ = account.userName_;
-            session.elo_ = account.elo_;
+            Account account;
+            const AccountResult result = accountRepository_->Verify(request.userName_, request.password_, account);
 
-            sessionService_.bind(conn->id(), std::move(session));
+            if(result != AccountResult::kOk)
+            {
+                response.errorCode_ = toErrorCode(result);
+                response.errorMessage_ = accountResultMessage(result);
+            }
+            else
+            {
+                PlayerSession session;
+                session.userId_ = account.userId_;
+                session.userName_ = account.userName_;
+                session.elo_ = account.elo_;
 
-            response.success_ = true;
-            response.userId_ = account.userId_;
-            response.elo_ = account.elo_;
-            response.userName_ = account.userName_;
+                if(!sessionService_.bind(conn->id(), std::move(session)))
+                {
+                    response.errorCode_ = GameMessages::ErrorCode::kInvalidState;
+                    response.errorMessage_ = "Account is already online";
+                }
+                else
+                {
+                    response.success_ = true;
+                    response.userId_ = account.userId_;
+                    response.elo_ = account.elo_;
+                    response.userName_ = account.userName_;
 
-            LOG_INFO("Login success: uid=%u\n", account.userId_);
+                    LOG_INFO("Login success: uid=%u\n", account.userId_);
+                }
+            }
         }
     }
 
