@@ -12,12 +12,14 @@ SOURCES += \
     main.cpp \
     mainwindow.cpp \
     network/GameClinet.cc \
+    scenes/BattleScene.cc \
     scenes/LobbyScene.cc \
-    scenes/LoginScene.cc
+    scenes/LoginScene.cc \
 
 HEADERS += \
     mainwindow.h \
     network/GameClient.h \
+    scenes/BattleScene.h \
     scenes/LobbyScene.h \
     scenes/LoginScene.h \
 

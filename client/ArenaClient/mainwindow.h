@@ -3,6 +3,7 @@
 #include <QStackedWidget>
 #include <QTimer>
 #include <memory>
+#include <cstdint>
 
 class LoginScene;
 class LobbyScene;
@@ -36,6 +37,7 @@ public:
     GameClient* getClient() { return client_.get(); }
 
     void enterLobby(uint32_t userId, const QString& userName, uint32_t elo);
+    void enterBattle(uint64_t roomId, const QString& opponentName, uint32_t opponentElo);
 
 signals:
     void userLoggedIn(uint32_t uid, const QString& name);

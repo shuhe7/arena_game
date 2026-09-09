@@ -16,7 +16,6 @@ public:
 
     void showMatchmakingQueued();
     void showMatchJoinRejected(const QString& errorMessage);
-    void showMatchFound(const QString& opponentUserName, uint32_t opponentElo);
 signals:
     void matchRequested();
 private slots:
