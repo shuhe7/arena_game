@@ -169,6 +169,9 @@ void GameServer::onMessage(const TcpConnectionPtr &conn, Buffer *buf, Timestamp 
             case GameProtocol::MSG_MATCH_JOIN_REQ:
                 handleMatchJoin(conn, reader);
                 break;
+            case GameProtocol::MSG_HERO_SELECT_REQ:
+                handleHeroSelect(conn, reader);
+                break;
             default:
                 break;
         }
@@ -356,6 +359,99 @@ void GameServer::handleMatchJoin(const TcpConnectionPtr& conn, BinaryReader& rea
     }
 
     sendToConnection(conn->id(), GameProtocol::MSG_MATCH_JOIN_RSP, writer);
+}
+
+void GameServer::handleHeroSelect(const TcpConnectionPtr& conn, BinaryReader& reader)
+{
+    GameMessages::HeroSelectRequest request;
+    GameMessages::HeroSelectResponse response;
+
+    if(!GameMessages::decode(reader, request))
+    {
+        response.errorCode_ = GameMessages::ErrorCode::kMalformedPayload;
+        response.errorMessage_ = "Malformed hero selection payload";
+    }
+    else
+    {
+        const PlayerSession* session = sessionService_.findByConnection(conn->id());
+        if(session == nullptr)
+        {
+            response.errorCode_ = GameMessages::ErrorCode::kNotAuthenticated;
+            response.errorMessage_ = "Login is required before selecting a hero";
+        }
+        else if(session->roomId_ == 0)
+        {
+            response.errorCode_ = GameMessages::ErrorCode::kInvalidState;
+            response.errorMessage_ = "Matchmaking is required before selecting a hero";
+        }
+        else if(!roomService_.selectHero(session->roomId_, session->userId_, request.heroType_))
+        {
+            response.errorCode_ = GameMessages::ErrorCode::kInvalidState;
+            response.errorMessage_ = "Hero selection is invalid or already confirmed";
+        }
+        else
+        {
+            response.accepted_ = true;
+        }
+    }
+
+    BinaryWriter writer;
+    if(!GameMessages::encode(writer, response))
+    {
+        LOG_ERROR("%s", "Failed to encode hero selection response\n");
+        return;
+    }
+
+    sendToConnection(conn->id(), GameProtocol::MSG_HERO_SELECT_RSP, writer);
+
+    if(!response.accepted_)
+    {
+        return;
+    }
+
+    const PlayerSession* session = sessionService_.findByConnection(conn->id());
+    if(session == nullptr || !roomService_.bothHeroesSelected(session->roomId_))
+    {
+        return;
+    }
+
+    const Room* room = roomService_.find(session->roomId_);
+    if(room == nullptr)
+    {
+        LOG_ERROR("%s", "Selected room disappeared before battle start\n");
+        return;
+    }
+
+    sendBattleStartNotification(*room);
+}
+
+void GameServer::sendBattleStartNotification(const Room& room)
+{
+    const uint64_t firstConnectionId = sessionService_.findConnectionByUserId(room.firstUserId_);
+    const uint64_t secondConnectionId = sessionService_.findConnectionByUserId(room.secondUserId_);
+
+    const GameMessages::BattleStartNotification firstNotification{room.roomId_, room.firstHero_, room.secondHero_};
+    const GameMessages::BattleStartNotification secondNotification{room.roomId_, room.secondHero_, room.firstHero_};
+
+    BinaryWriter firstWriter;
+    if(!GameMessages::encode(firstWriter, firstNotification))
+    {
+        LOG_ERROR("%s", "Failed to encode first battle start notification\n");
+    }
+    else
+    {
+        sendToConnection(firstConnectionId, GameProtocol::MSG_BATTLE_START_NTF, firstWriter);
+    }
+
+    BinaryWriter secondWriter;
+    if(!GameMessages::encode(secondWriter, secondNotification))
+    {
+        LOG_ERROR("%s", "Failed to encode second battle start notification\n");
+    }
+    else
+    {
+        sendToConnection(secondConnectionId, GameProtocol::MSG_BATTLE_START_NTF, secondWriter);
+    }
 }
 
 void GameServer::processMatchmakingTick()

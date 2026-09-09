@@ -40,6 +40,9 @@ private:
     GameServer();
 
     void handleMatchJoin(const TcpConnectionPtr& conn, BinaryReader& reader);
+    void handleHeroSelect(const TcpConnectionPtr& conn, BinaryReader& reader);
+
+    void sendBattleStartNotification(const Room& room);
 
     void processMatchmakingTick();
 
