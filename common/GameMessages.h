@@ -19,6 +19,14 @@ namespace GameMessages
         kInternalError = 7,
     };
 
+    enum class HeroType : uint8_t
+    {
+        kNone = 0,
+        kWarrior = 1,
+        kMage = 2,
+        kArcher = 3,
+    };
+
     struct LoginRequest 
     {
         std::string userName_;
@@ -68,6 +76,25 @@ namespace GameMessages
     struct MatchJoinRequest
     {
 
+    };
+
+    struct HeroSelectRequest
+    {
+        HeroType heroType_ = HeroType::kNone;
+    };
+
+    struct HeroSelectResponse
+    {
+        bool accepted_ = false;
+        ErrorCode errorCode_ = ErrorCode::kNone;
+        std::string errorMessage_;
+    };
+
+    struct BattleStartNotification
+    {
+        uint64_t roomId_ = 0;
+        HeroType playerHero_ = HeroType::kNone;
+        HeroType opponentHero_ = HeroType::kNone;
     };
 
     inline bool encode(BinaryWriter& writer, const LoginRequest& value) 
@@ -223,5 +250,85 @@ namespace GameMessages
     inline bool decode(BinaryReader& reader, MatchJoinRequest&)
     {
         return reader.eof();
+    }
+
+    inline bool encode(BinaryWriter& writer, const HeroSelectRequest& value)
+    {
+        writer.writeU8(static_cast<uint8_t>(value.heroType_));
+        return true;
+    }
+
+    inline bool decode(BinaryReader& reader, HeroSelectRequest& value)
+    {
+        uint8_t heroType = 0;
+        if (!reader.readU8(heroType) || !reader.eof())
+        {
+            return false;
+        }
+
+        value.heroType_ = static_cast<HeroType>(heroType);
+        return true;
+    }
+
+    inline bool encode(BinaryWriter& writer, const HeroSelectResponse& value)
+    {
+        writer.writeU8(value.accepted_ ? 1 : 0);
+
+        if (value.accepted_)
+        {
+            return true;
+        }
+
+        writer.writeU16(static_cast<uint16_t>(value.errorCode_));
+        return writer.writeString(value.errorMessage_);
+    }
+
+    inline bool decode(BinaryReader& reader, HeroSelectResponse& value)
+    {
+        uint8_t accepted = 0;
+        if (!reader.readU8(accepted) || (accepted != 0 && accepted != 1))
+        {
+            return false;
+        }
+
+        value = HeroSelectResponse{};
+        value.accepted_ = accepted != 0;
+
+        if (value.accepted_)
+        {
+            return reader.eof();
+        }
+
+        uint16_t errorCode = 0;
+        if (!reader.readU16(errorCode) || !reader.readString(value.errorMessage_) || !reader.eof())
+        {
+            return false;
+        }
+
+        value.errorCode_ = static_cast<ErrorCode>(errorCode);
+        return true;
+    }
+
+    inline bool encode(BinaryWriter& writer, const BattleStartNotification& value)
+    {
+        writer.writeU64(value.roomId_);
+        writer.writeU8(static_cast<uint8_t>(value.playerHero_));
+        writer.writeU8(static_cast<uint8_t>(value.opponentHero_));
+        return true;
+    }
+
+    inline bool decode(BinaryReader& reader, BattleStartNotification& value)
+    {
+        uint8_t playerHero = 0;
+        uint8_t opponentHero = 0;
+
+        if (!reader.readU64(value.roomId_) || !reader.readU8(playerHero) || !reader.readU8(opponentHero) || !reader.eof())
+        {
+            return false;
+        }
+
+        value.playerHero_ = static_cast<HeroType>(playerHero);
+        value.opponentHero_ = static_cast<HeroType>(opponentHero);
+        return true;
     }
 }
