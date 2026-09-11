@@ -23,6 +23,7 @@ public:
 
     uint64_t findConnectionByUserId(uint32_t userId) const;
     void markInRoom(uint32_t userId, uint64_t roomId);
+    void clearRoom(uint32_t userId);
 private:
     std::unordered_map<uint64_t, PlayerSession> sessionsByConnection_;
     std::unordered_map<uint32_t, uint64_t> connectionByUserId_;

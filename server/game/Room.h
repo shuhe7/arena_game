@@ -19,6 +19,7 @@ class RoomService
 public:
     uint64_t create(uint32_t firstUserId, uint32_t secondUserId);
     const Room* find(uint64_t roomId) const;
+    bool remove(uint64_t roomId);
 
     bool selectHero(uint64_t roomId, uint32_t userId, GameMessages::HeroType heroType);
     bool bothHeroesSelected(uint64_t roomId) const;

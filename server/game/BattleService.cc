@@ -45,6 +45,10 @@ const BattleState* BattleService::find(uint64_t roomId) const
     const auto it = battles_.find(roomId);
     return it == battles_.end() ? nullptr : &it->second;
 }
+bool BattleService::remove(uint64_t roomId)
+{
+    return battles_.erase(roomId) != 0;
+}
 BattleActionResult BattleService::attack(uint64_t roomId, uint32_t userId)
 {
     BattleActionResult result;

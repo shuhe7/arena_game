@@ -31,6 +31,7 @@ class BattleService
 public:
     bool start(const Room& room);
     const BattleState* find(uint64_t roomId) const;
+    bool remove(uint64_t roomId);
     BattleActionResult attack(uint64_t roomId, uint32_t userId);
 private:
     std::unordered_map<uint64_t, BattleState> battles_;

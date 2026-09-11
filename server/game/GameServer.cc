@@ -467,6 +467,11 @@ void GameServer::handleBattleAttack(const TcpConnectionPtr& conn, BinaryReader& 
     if(result.finished_)
     {
         sendBattleResultNotification(result.state_);
+
+        sessionService_.clearRoom(result.state_.firstUserId_);
+        sessionService_.clearRoom(result.state_.secondUserId_);
+        roomService_.remove(result.state_.roomId_);
+        battleService_.remove(result.state_.roomId_);
     }
 }
 

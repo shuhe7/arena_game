@@ -24,6 +24,11 @@ const Room* RoomService::find(uint64_t roomId) const
     return it == rooms_.end() ? nullptr : &it->second;
 }
 
+bool RoomService::remove(uint64_t roomId)
+{
+    return rooms_.erase(roomId) != 0;
+}
+
 bool RoomService::selectHero(uint64_t roomId, uint32_t userId, GameMessages::HeroType heroType)
 {
     if(!isSelectableHero(heroType))

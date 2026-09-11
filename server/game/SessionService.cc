@@ -58,3 +58,18 @@ void SessionService::markInRoom(uint32_t userId, uint64_t roomId)
         session->roomId_ = roomId;
     }
 }
+
+void SessionService::clearRoom(uint32_t userId)
+{
+    const uint64_t connectionId = findConnectionByUserId(userId);
+    if(connectionId == 0)
+    {
+        return;
+    }
+
+    PlayerSession* session = findByConnection(connectionId);
+    if(session != nullptr)
+    {
+        session->roomId_ = 0;
+    }
+}
