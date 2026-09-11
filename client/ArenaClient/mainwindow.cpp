@@ -126,6 +126,16 @@ void MainWindow::initUi()
         client_->sendMessage(GameProtocol::MSG_HERO_SELECT_REQ, payload);
     });
 
+    connect(battleScene_, &BattleScene::attackRequested, this, [this](){
+        GameMessages::BattleAttackRequest request;
+        BinaryWriter payload;
+
+        if(GameMessages::encode(payload, request))
+        {
+            client_->sendMessage(GameProtocol::MSG_BATTLE_ATTACK_REQ, payload);
+        }
+    });
+
     client_->registerHandler(GameProtocol::MSG_MATCH_JOIN_RSP, [this](BinaryReader& reader){
         GameMessages::MatchJoinResponse response;
         if(!GameMessages::decode(reader, response))
@@ -183,6 +193,26 @@ void MainWindow::initUi()
         }
 
         startBattle(notification.roomId_, notification.playerHero_, notification.opponentHero_);
+    });
+
+    client_->registerHandler(GameProtocol::MSG_BATTLE_STATE_NTF, [this](BinaryReader& reader){
+        GameMessages::BattleStateNotification notification;
+        if(!GameMessages::decode(reader, notification) || notification.roomId_ != matchedRoomId_)
+        {
+            return;
+        }
+
+        battleScene_->showBattleState(notification.playerHealth_, notification.opponentHealth_, notification.playerTurn_);
+    });
+
+    client_->registerHandler(GameProtocol::MSG_BATTLE_RESULT_NTF, [this](BinaryReader& reader){
+        GameMessages::BattleResultNotification notification;
+        if(!GameMessages::decode(reader, notification) || notification.roomId_ != matchedRoomId_)
+        {
+            return;
+        }
+
+        battleScene_->showBattleResult(notification.won_);
     });
 
     switchTo(SCENE_LOGIN);
