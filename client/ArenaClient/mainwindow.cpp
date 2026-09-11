@@ -70,6 +70,7 @@ void MainWindow::enterHeroSelect(uint64_t roomId, const QString &opponentUserNam
     matchedOpponentName_ = opponentUserName;
     matchedOpponentElo_ = opponentElo;
 
+    heroSelectScene_->resetSelection();
     switchTo(SCENE_HERO_SELECT);
 }
 
@@ -134,6 +135,11 @@ void MainWindow::initUi()
         {
             client_->sendMessage(GameProtocol::MSG_BATTLE_ATTACK_REQ, payload);
         }
+    });
+
+    connect(battleScene_, &BattleScene::returnToLobbyRequested, this, [this](){
+        lobbyScene_->showMatchmakingReady();
+        switchTo(SCENE_LOBBY);
     });
 
     client_->registerHandler(GameProtocol::MSG_MATCH_JOIN_RSP, [this](BinaryReader& reader){

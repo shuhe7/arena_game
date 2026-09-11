@@ -14,6 +14,7 @@ public:
 
     void setPlayerInfo(uint32_t userId, const QString& userName, uint32_t elo);
 
+    void showMatchmakingReady();
     void showMatchmakingQueued();
     void showMatchJoinRejected(const QString& errorMessage);
 signals:

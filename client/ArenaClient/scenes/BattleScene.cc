@@ -55,6 +55,7 @@ void BattleScene::showBattleState(uint16_t playerHealth, uint16_t opponentHealth
 void BattleScene::showBattleResult(bool won)
 {
     attackButton_->setEnabled(false);
+    returnLobbyButton_->setEnabled(true);
     battleStatusLabel_->setText(won ? "VICTORY // BATTLE COMPLETE" : "DEFEAT // BATTLE COMPLETE");
 }
 
@@ -104,6 +105,11 @@ void BattleScene::setupUi()
     attackButton_->setEnabled(false);
     attackButton_->setMinimumHeight(48);
 
+    returnLobbyButton_ = new QPushButton("RETURN TO LOBBY", this);
+    returnLobbyButton_->setObjectName("returnLobbyButton");
+    returnLobbyButton_->setEnabled(false);
+    returnLobbyButton_->setMinimumHeight(48);
+
     layout->addWidget(roomLabel_);
     layout->addWidget(playerLabel_);
     layout->addWidget(playerHeroLabel_);
@@ -113,6 +119,7 @@ void BattleScene::setupUi()
     layout->addWidget(opponentHealthLabel_);
     layout->addWidget(battleStatusLabel_);
     layout->addWidget(attackButton_);
+    layout->addWidget(returnLobbyButton_);
 
     setStyleSheet(R"(
         #battleScene {
@@ -148,7 +155,7 @@ void BattleScene::setupUi()
             font-weight: 600;
         }
 
-        #attackButton {
+        #attackButton, #returnLobbyButton {
             background: #f2c94c;
             border: none;
             border-radius: 6px;
@@ -157,15 +164,15 @@ void BattleScene::setupUi()
             font-weight: 700;
         }
 
-        #attackButton:hover {
+        #attackButton:hover, #returnLobbyButton:hover {
             background: #ffe080;
         }
 
-        #attackButton:pressed {
+        #attackButton:pressed, #returnLobbyButton:pressed {
             background: #d6ad2c;
         }
 
-        #attackButton:disabled {
+        #attackButton:disabled, #returnLobbyButton:disabled {
             background: #4b5361;
             color: #9da7b6;
         }
@@ -174,5 +181,10 @@ void BattleScene::setupUi()
     connect(attackButton_, &QPushButton::clicked, this, [this](){
         attackButton_->setEnabled(false);
         emit attackRequested();
+    });
+
+    connect(returnLobbyButton_, &QPushButton::clicked, this, [this](){
+        returnLobbyButton_->setEnabled(false);
+        emit returnToLobbyRequested();
     });
 }

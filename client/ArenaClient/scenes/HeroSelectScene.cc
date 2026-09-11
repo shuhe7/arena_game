@@ -10,6 +10,16 @@ HeroSelectScene::HeroSelectScene(QWidget* parent)
     setupUi();
 }
 
+void HeroSelectScene::resetSelection()
+{
+    selectedHero_ = GameMessages::HeroType::kNone;
+    warriorButton_->setEnabled(true);
+    mageButton_->setEnabled(true);
+    archerButton_->setEnabled(true);
+    confirmButton_->setEnabled(false);
+    heroSelectStatusLabel_->setText("CHOOSE YOUR HERO");
+}
+
 void HeroSelectScene::showSelectionAccepted()
 {
     warriorButton_->setEnabled(false);

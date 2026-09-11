@@ -22,6 +22,7 @@ public:
     void showBattleResult(bool won);
 signals:
     void attackRequested();
+    void returnToLobbyRequested();
 private:
     void setupUi();
 
@@ -34,4 +35,5 @@ private:
     QLabel* playerHealthLabel_ = nullptr;
     QLabel* opponentHealthLabel_ = nullptr;
     QPushButton* attackButton_ = nullptr;
+    QPushButton* returnLobbyButton_ = nullptr;
 };

@@ -19,6 +19,13 @@ void LobbyScene::setPlayerInfo(uint32_t userId, const QString &userName, uint32_
     playerEloLabel_->setText(QString("ELO: %1").arg(elo));
 }
 
+void LobbyScene::showMatchmakingReady()
+{
+    matchButton_->setEnabled(true);
+    matchButton_->setText("START MATCHMAKING");
+    matchStatusLabel_->setText("READY // AWAITING COMMAND");
+}
+
 void LobbyScene::showMatchmakingQueued()
 {
     matchButton_->setEnabled(false);

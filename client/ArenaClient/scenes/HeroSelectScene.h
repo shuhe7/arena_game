@@ -13,6 +13,7 @@ class HeroSelectScene : public QWidget
 public:
     explicit HeroSelectScene(QWidget* parent = nullptr);
 
+    void resetSelection();
     void showSelectionAccepted();
     void showSelectionRejected(const QString& errorMessage);
 signals:
