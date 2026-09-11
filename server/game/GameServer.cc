@@ -172,6 +172,9 @@ void GameServer::onMessage(const TcpConnectionPtr &conn, Buffer *buf, Timestamp 
             case GameProtocol::MSG_HERO_SELECT_REQ:
                 handleHeroSelect(conn, reader);
                 break;
+            case GameProtocol::MSG_BATTLE_ATTACK_REQ:
+                handleBattleAttack(conn, reader);
+                break;
             default:
                 break;
         }
@@ -422,7 +425,49 @@ void GameServer::handleHeroSelect(const TcpConnectionPtr& conn, BinaryReader& re
         return;
     }
 
+    if(!battleService_.start(*room))
+    {
+        LOG_ERROR("%s", "Failed to start battle\n");
+        return;
+    }
+
+    const BattleState* battleState = battleService_.find(room->roomId_);
+    if(battleState == nullptr)
+    {
+        LOG_ERROR("%s", "Started battle disappeared\n");
+        return;
+    }
+
     sendBattleStartNotification(*room);
+    sendBattleStateNotification(*battleState);
+}
+
+void GameServer::handleBattleAttack(const TcpConnectionPtr& conn, BinaryReader& reader)
+{
+    GameMessages::BattleAttackRequest request;
+    if(!GameMessages::decode(reader, request))
+    {
+        return;
+    }
+
+    const PlayerSession* session = sessionService_.findByConnection(conn->id());
+    if(session == nullptr || session->roomId_ == 0)
+    {
+        return;
+    }
+
+    const BattleActionResult result = battleService_.attack(session->roomId_, session->userId_);
+    if(!result.accepted_)
+    {
+        return;
+    }
+
+    sendBattleStateNotification(result.state_);
+
+    if(result.finished_)
+    {
+        sendBattleResultNotification(result.state_);
+    }
 }
 
 void GameServer::sendBattleStartNotification(const Room& room)
@@ -451,6 +496,62 @@ void GameServer::sendBattleStartNotification(const Room& room)
     else
     {
         sendToConnection(secondConnectionId, GameProtocol::MSG_BATTLE_START_NTF, secondWriter);
+    }
+}
+void GameServer::sendBattleStateNotification(const BattleState& state)
+{
+    const uint64_t firstConnectionId = sessionService_.findConnectionByUserId(state.firstUserId_);
+    const uint64_t secondConnectionId = sessionService_.findConnectionByUserId(state.secondUserId_);
+
+    const GameMessages::BattleStateNotification firstNotification{
+        state.roomId_,
+        state.firstHealth_,
+        state.secondHealth_,
+        state.activeUserId_ == state.firstUserId_
+    };
+    const GameMessages::BattleStateNotification secondNotification{
+        state.roomId_,
+        state.secondHealth_,
+        state.firstHealth_,
+        state.activeUserId_ == state.secondUserId_
+    };
+
+    BinaryWriter firstWriter;
+    if(GameMessages::encode(firstWriter, firstNotification))
+    {
+        sendToConnection(firstConnectionId, GameProtocol::MSG_BATTLE_STATE_NTF, firstWriter);
+    }
+
+    BinaryWriter secondWriter;
+    if(GameMessages::encode(secondWriter, secondNotification))
+    {
+        sendToConnection(secondConnectionId, GameProtocol::MSG_BATTLE_STATE_NTF, secondWriter);
+    }
+}
+void GameServer::sendBattleResultNotification(const BattleState& state)
+{
+    const uint64_t firstConnectionId = sessionService_.findConnectionByUserId(state.firstUserId_);
+    const uint64_t secondConnectionId = sessionService_.findConnectionByUserId(state.secondUserId_);
+
+    const GameMessages::BattleResultNotification firstNotification{
+        state.roomId_,
+        state.winnerUserId_ == state.firstUserId_
+    };
+    const GameMessages::BattleResultNotification secondNotification{
+        state.roomId_,
+        state.winnerUserId_ == state.secondUserId_
+    };
+
+    BinaryWriter firstWriter;
+    if(GameMessages::encode(firstWriter, firstNotification))
+    {
+        sendToConnection(firstConnectionId, GameProtocol::MSG_BATTLE_RESULT_NTF, firstWriter);
+    }
+
+    BinaryWriter secondWriter;
+    if(GameMessages::encode(secondWriter, secondNotification))
+    {
+        sendToConnection(secondConnectionId, GameProtocol::MSG_BATTLE_RESULT_NTF, secondWriter);
     }
 }
 

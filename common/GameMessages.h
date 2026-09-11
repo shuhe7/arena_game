@@ -97,6 +97,24 @@ namespace GameMessages
         HeroType opponentHero_ = HeroType::kNone;
     };
 
+    struct BattleAttackRequest
+    {
+    };
+
+    struct BattleStateNotification
+    {
+        uint64_t roomId_ = 0;
+        uint16_t playerHealth_ = 0;
+        uint16_t opponentHealth_ = 0;
+        bool playerTurn_ = false;
+    };
+
+    struct BattleResultNotification
+    {
+        uint64_t roomId_ = 0;
+        bool won_ = false;
+    };
+
     inline bool encode(BinaryWriter& writer, const LoginRequest& value) 
     {
         return writer.writeString(value.userName_) && writer.writeString(value.password_);
@@ -329,6 +347,58 @@ namespace GameMessages
 
         value.playerHero_ = static_cast<HeroType>(playerHero);
         value.opponentHero_ = static_cast<HeroType>(opponentHero);
+        return true;
+    }
+
+    inline bool encode(BinaryWriter&, const BattleAttackRequest&)
+    {
+        return true;
+    }
+
+    inline bool decode(BinaryReader& reader, BattleAttackRequest&)
+    {
+        return reader.eof();
+    }
+
+    inline bool encode(BinaryWriter& writer, const BattleStateNotification& value)
+    {
+        writer.writeU64(value.roomId_);
+        writer.writeU16(value.playerHealth_);
+        writer.writeU16(value.opponentHealth_);
+        writer.writeU8(value.playerTurn_ ? 1 : 0);
+        return true;
+    }
+
+    inline bool decode(BinaryReader& reader, BattleStateNotification& value)
+    {
+        uint8_t playerTurn = 0;
+        if(!reader.readU64(value.roomId_) || !reader.readU16(value.playerHealth_) || !reader.readU16(value.opponentHealth_) || !reader.readU8(playerTurn) ||
+           (playerTurn != 0 && playerTurn != 1) || !reader.eof())
+        {
+            return false;
+        }
+
+        value.playerTurn_ = playerTurn != 0;
+        return true;
+    }
+
+    inline bool encode(BinaryWriter& writer, const BattleResultNotification& value)
+    {
+        writer.writeU64(value.roomId_);
+        writer.writeU8(value.won_ ? 1 : 0);
+        return true;
+    }
+
+    inline bool decode(BinaryReader& reader, BattleResultNotification& value)
+    {
+        uint8_t won = 0;
+        if(!reader.readU64(value.roomId_) || !reader.readU8(won) ||
+           (won != 0 && won != 1) || !reader.eof())
+        {
+            return false;
+        }
+
+        value.won_ = won != 0;
         return true;
     }
 }

@@ -12,6 +12,7 @@
 #include "../../common/GameMessages.h"
 #include "Room.h"
 #include "MatchmakingService.h"
+#include "BattleService.h"
 
 #include <string>
 #include <unordered_map>
@@ -41,8 +42,11 @@ private:
 
     void handleMatchJoin(const TcpConnectionPtr& conn, BinaryReader& reader);
     void handleHeroSelect(const TcpConnectionPtr& conn, BinaryReader& reader);
+    void handleBattleAttack(const TcpConnectionPtr& conn, BinaryReader& reader);
 
     void sendBattleStartNotification(const Room& room);
+    void sendBattleStateNotification(const BattleState& state);
+    void sendBattleResultNotification(const BattleState& state);
 
     void processMatchmakingTick();
 
@@ -56,6 +60,8 @@ private:
     SessionService sessionService_;
     RoomService roomService_;
     MatchmakingService matchmakingService_;
+
+    BattleService battleService_;
 
     int port_;
 

@@ -21,6 +21,10 @@ namespace GameProtocol
         MSG_HERO_SELECT_REQ = 0x0040,
         MSG_HERO_SELECT_RSP = 0x0041,
         MSG_BATTLE_START_NTF = 0x0042,
+
+        MSG_BATTLE_ATTACK_REQ = 0x0050,
+        MSG_BATTLE_STATE_NTF = 0x0051,
+        MSG_BATTLE_RESULT_NTF = 0x0052,
     };
 
     constexpr uint32_t kHeaderSize = 4 + 2;

@@ -19,6 +19,7 @@ add_executable(arena_game_server
     game/MatchQueue.cc
     game/Room.cc
     game/SessionService.cc
+    game/BattleService.cc
 )
 
 target_link_libraries(arena_game_server PRIVATE
