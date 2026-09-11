@@ -1,5 +1,7 @@
 #include "BattleService.h"
 
+#include <limits>
+
 namespace
 {
     uint16_t heroDamage(GameMessages::HeroType heroType)
@@ -107,5 +109,23 @@ BattleActionResult BattleService::attack(uint64_t roomId, uint32_t userId)
     result.accepted_ = true;
     result.finished_ = state.finished_;
     result.state_ = state;
+    return result;
+}
+
+BattleEloResult BattleService::calculateElo(const BattleState& state, uint32_t firstElo, uint32_t secondElo)
+{
+    BattleEloResult result{firstElo, secondElo};
+
+    if(state.winnerUserId_ == state.firstUserId_)
+    {
+        result.firstElo_ = result.firstElo_ > std::numeric_limits<uint32_t>::max() - 25 ? std::numeric_limits<uint32_t>::max() : result.firstElo_ + 25;
+        result.secondElo_ = result.secondElo_ >= 25 ? result.secondElo_ - 25 : 0;
+    }
+    else if(state.winnerUserId_ == state.secondUserId_)
+    {
+        result.secondElo_ = result.secondElo_ > std::numeric_limits<uint32_t>::max() - 25 ? std::numeric_limits<uint32_t>::max() : result.secondElo_ + 25;
+        result.firstElo_ = result.firstElo_ >= 25 ? result.firstElo_ - 25 : 0;
+    }
+
     return result;
 }

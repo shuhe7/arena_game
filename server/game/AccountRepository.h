@@ -30,6 +30,7 @@ public:
 
     AccountResult Register(const std::string& userName, const std::string& password, Account& outAccount);
     AccountResult Verify(const std::string& userName, const std::string& password, Account& outAccount) const;
+    bool updateEloPair(uint32_t firstUserId, uint32_t firstElo, uint32_t secondUserId, uint32_t secondElo);
 
     std::size_t size() const;
 private:

@@ -466,6 +466,27 @@ void GameServer::handleBattleAttack(const TcpConnectionPtr& conn, BinaryReader& 
 
     if(result.finished_)
     {
+        const uint64_t firstConnectionId = sessionService_.findConnectionByUserId(result.state_.firstUserId_);
+        const uint64_t secondConnectionId = sessionService_.findConnectionByUserId(result.state_.secondUserId_);
+
+        PlayerSession* firstSession = sessionService_.findByConnection(firstConnectionId);
+        PlayerSession* secondSession = sessionService_.findByConnection(secondConnectionId);
+
+        if(firstSession != nullptr && secondSession != nullptr)
+        {
+            const BattleEloResult eloResult = BattleService::calculateElo(result.state_, firstSession->elo_, secondSession->elo_);
+
+            if(accountRepository_->updateEloPair(firstSession->userId_, eloResult.firstElo_, secondSession->userId_, eloResult.secondElo_))
+            {
+                firstSession->elo_ = eloResult.firstElo_;
+                secondSession->elo_ = eloResult.secondElo_;
+            }
+            else
+            {
+                LOG_ERROR("%s", "Failed to persist battle ELO\n");
+            }
+        }
+
         sendBattleResultNotification(result.state_);
 
         sessionService_.clearRoom(result.state_.firstUserId_);
@@ -538,25 +559,37 @@ void GameServer::sendBattleResultNotification(const BattleState& state)
     const uint64_t firstConnectionId = sessionService_.findConnectionByUserId(state.firstUserId_);
     const uint64_t secondConnectionId = sessionService_.findConnectionByUserId(state.secondUserId_);
 
-    const GameMessages::BattleResultNotification firstNotification{
-        state.roomId_,
-        state.winnerUserId_ == state.firstUserId_
-    };
-    const GameMessages::BattleResultNotification secondNotification{
-        state.roomId_,
-        state.winnerUserId_ == state.secondUserId_
-    };
+    const PlayerSession* firstSession = sessionService_.findByConnection(firstConnectionId);
+    const PlayerSession* secondSession = sessionService_.findByConnection(secondConnectionId);
 
-    BinaryWriter firstWriter;
-    if(GameMessages::encode(firstWriter, firstNotification))
+    if(firstSession != nullptr)
     {
-        sendToConnection(firstConnectionId, GameProtocol::MSG_BATTLE_RESULT_NTF, firstWriter);
+        const GameMessages::BattleResultNotification firstNotification{
+            state.roomId_,
+            state.winnerUserId_ == state.firstUserId_,
+            firstSession->elo_
+        };
+
+        BinaryWriter firstWriter;
+        if(GameMessages::encode(firstWriter, firstNotification))
+        {
+            sendToConnection(firstConnectionId, GameProtocol::MSG_BATTLE_RESULT_NTF, firstWriter);
+        }
     }
 
-    BinaryWriter secondWriter;
-    if(GameMessages::encode(secondWriter, secondNotification))
+    if(secondSession != nullptr)
     {
-        sendToConnection(secondConnectionId, GameProtocol::MSG_BATTLE_RESULT_NTF, secondWriter);
+        const GameMessages::BattleResultNotification secondNotification{
+            state.roomId_,
+            state.winnerUserId_ == state.secondUserId_,
+            secondSession->elo_
+        };
+
+        BinaryWriter secondWriter;
+        if(GameMessages::encode(secondWriter, secondNotification))
+        {
+            sendToConnection(secondConnectionId, GameProtocol::MSG_BATTLE_RESULT_NTF, secondWriter);
+        }
     }
 }
 

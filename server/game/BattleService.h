@@ -26,6 +26,12 @@ struct BattleActionResult
     BattleState state_;
 };
 
+struct BattleEloResult
+{
+    uint32_t firstElo_ = 0;
+    uint32_t secondElo_ = 0;
+};
+
 class BattleService
 {
 public:
@@ -33,6 +39,7 @@ public:
     const BattleState* find(uint64_t roomId) const;
     bool remove(uint64_t roomId);
     BattleActionResult attack(uint64_t roomId, uint32_t userId);
+    static BattleEloResult calculateElo(const BattleState& state, uint32_t firstElo, uint32_t secondElo);
 private:
     std::unordered_map<uint64_t, BattleState> battles_;
 };

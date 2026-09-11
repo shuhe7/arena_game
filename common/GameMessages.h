@@ -113,6 +113,7 @@ namespace GameMessages
     {
         uint64_t roomId_ = 0;
         bool won_ = false;
+        uint32_t playerElo_ = 0;
     };
 
     inline bool encode(BinaryWriter& writer, const LoginRequest& value) 
@@ -386,14 +387,15 @@ namespace GameMessages
     {
         writer.writeU64(value.roomId_);
         writer.writeU8(value.won_ ? 1 : 0);
+        writer.writeU32(value.playerElo_);
         return true;
     }
 
     inline bool decode(BinaryReader& reader, BattleResultNotification& value)
     {
         uint8_t won = 0;
-        if(!reader.readU64(value.roomId_) || !reader.readU8(won) ||
-           (won != 0 && won != 1) || !reader.eof())
+        if(!reader.readU64(value.roomId_) || !reader.readU8(won) || !reader.readU32(value.playerElo_) ||
+           (won != 0 && won != 1)  || !reader.eof())
         {
             return false;
         }

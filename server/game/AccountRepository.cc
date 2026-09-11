@@ -142,6 +142,49 @@ AccountResult AccountRepository::Verify(const std::string &userName, const std::
     return AccountResult::kOk;
 }
 
+bool AccountRepository::updateEloPair(uint32_t firstUserId, uint32_t firstElo, uint32_t secondUserId, uint32_t secondElo)
+{
+    if(firstUserId == 0 || secondUserId == 0 || firstUserId == secondUserId)
+    {
+        return false;
+    }
+
+    AccountRecord* firstRecord = nullptr;
+    AccountRecord* secondRecord = nullptr;
+
+    for(auto& pair : accounts_)
+    {
+        if(pair.second.account_.userId_ == firstUserId)
+        {
+            firstRecord = &pair.second;
+        }
+        else if(pair.second.account_.userId_ == secondUserId)
+        {
+            secondRecord = &pair.second;
+        }
+    }
+
+    if(firstRecord == nullptr || secondRecord == nullptr)
+    {
+        return false;
+    }
+
+    const uint32_t oldFirstElo = firstRecord->account_.elo_;
+    const uint32_t oldSecondElo = secondRecord->account_.elo_;
+
+    firstRecord->account_.elo_ = firstElo;
+    secondRecord->account_.elo_ = secondElo;
+
+    if(save())
+    {
+        return true;
+    }
+
+    firstRecord->account_.elo_ = oldFirstElo;
+    secondRecord->account_.elo_ = oldSecondElo;
+    return false;
+}
+
 std::size_t AccountRepository::size() const
 {
     return accounts_.size();
