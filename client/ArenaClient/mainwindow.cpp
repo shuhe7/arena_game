@@ -218,6 +218,8 @@ void MainWindow::initUi()
             return;
         }
 
+        setUserInfo(userId_, userName_, notification.playerElo_);
+        battleScene_->setMatchInfo(notification.roomId_, userName_, elo_, matchedOpponentName_, matchedOpponentElo_);
         battleScene_->showBattleResult(notification.won_);
     });
 
