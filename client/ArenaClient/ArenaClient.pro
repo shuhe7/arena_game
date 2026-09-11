@@ -13,6 +13,7 @@ SOURCES += \
     mainwindow.cpp \
     network/GameClinet.cc \
     scenes/BattleScene.cc \
+    scenes/HeroSelectScene.cc \
     scenes/LobbyScene.cc \
     scenes/LoginScene.cc \
 
@@ -20,6 +21,7 @@ HEADERS += \
     mainwindow.h \
     network/GameClient.h \
     scenes/BattleScene.h \
+    scenes/HeroSelectScene.h \
     scenes/LobbyScene.h \
     scenes/LoginScene.h \
 

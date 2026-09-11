@@ -5,6 +5,7 @@
 #include "scenes/LobbyScene.h"
 #include "../../common/GameMessages.h"
 #include "scenes/BattleScene.h"
+#include "scenes/HeroSelectScene.h"
 
 #include <QStackedWidget>
 
@@ -30,6 +31,9 @@ void MainWindow::switchTo(Scene scene)
         break;
     case SCENE_BATTLE:
         stack_->setCurrentWidget(battleScene_);
+        break;
+    case SCENE_HERO_SELECT:
+        stack_->setCurrentWidget(heroSelectScene_);
         break;
     case SCENE_RESULT:
         break;
@@ -60,6 +64,22 @@ void MainWindow::enterBattle(uint64_t roomId, const QString &opponentName, uint3
     switchTo(SCENE_BATTLE);
 }
 
+void MainWindow::enterHeroSelect(uint64_t roomId, const QString &opponentUserName, uint32_t opponentElo)
+{
+    matchedRoomId_ = roomId;
+    matchedOpponentName_ = opponentUserName;
+    matchedOpponentElo_ = opponentElo;
+
+    switchTo(SCENE_HERO_SELECT);
+}
+
+void MainWindow::startBattle(uint64_t roomId, GameMessages::HeroType playerHero, GameMessages::HeroType opponentHero)
+{
+    battleScene_->setMatchInfo(roomId, userName_, elo_, matchedOpponentName_, matchedOpponentElo_);
+    battleScene_->setHeroInfo(playerHero, opponentHero);
+    switchTo(SCENE_BATTLE);
+}
+
 void MainWindow::initUi()
 {
     stack_ = new QStackedWidget(this);
@@ -72,6 +92,9 @@ void MainWindow::initUi()
 
     battleScene_ = new BattleScene(stack_);
     stack_->addWidget(battleScene_);
+
+    heroSelectScene_ = new HeroSelectScene(stack_);
+    stack_->addWidget(heroSelectScene_);
 
     setCentralWidget(stack_);
     setWindowTitle("Arena PvP");
@@ -87,6 +110,20 @@ void MainWindow::initUi()
         }
 
         client_->sendMessage(GameProtocol::MSG_MATCH_JOIN_REQ, payload);
+    });
+
+    connect(heroSelectScene_, &HeroSelectScene::heroConfirmed, this, [this](GameMessages::HeroType heroType){
+        GameMessages::HeroSelectRequest request;
+        request.heroType_ = heroType;
+
+        BinaryWriter payload;
+        if(!GameMessages::encode(payload, request))
+        {
+            heroSelectScene_->showSelectionRejected("Failed to encode hero selection");
+            return;
+        }
+
+        client_->sendMessage(GameProtocol::MSG_HERO_SELECT_REQ, payload);
     });
 
     client_->registerHandler(GameProtocol::MSG_MATCH_JOIN_RSP, [this](BinaryReader& reader){
@@ -113,7 +150,39 @@ void MainWindow::initUi()
             return;
         }
 
-        enterBattle(notification.roomId_,QString::fromStdString(notification.opponentUserName_),notification.opponentElo_);
+        enterHeroSelect(notification.roomId_,QString::fromStdString(notification.opponentUserName_),notification.opponentElo_);
+    });
+
+    client_->registerHandler(GameProtocol::MSG_HERO_SELECT_RSP, [this](BinaryReader& reader){
+        GameMessages::HeroSelectResponse response;
+        if(!GameMessages::decode(reader, response))
+        {
+            heroSelectScene_->showSelectionRejected("Malformed hero selection response");
+            return;
+        }
+
+        if(!response.accepted_)
+        {
+            heroSelectScene_->showSelectionRejected(QString::fromStdString(response.errorMessage_));
+            return;
+        }
+
+        heroSelectScene_->showSelectionAccepted();
+    });
+
+    client_->registerHandler(GameProtocol::MSG_BATTLE_START_NTF, [this](BinaryReader& reader){
+        GameMessages::BattleStartNotification notification;
+        if(!GameMessages::decode(reader, notification))
+        {
+            return;
+        }
+
+        if(notification.roomId_ != matchedRoomId_)
+        {
+            return;
+        }
+
+        startBattle(notification.roomId_, notification.playerHero_, notification.opponentHero_);
     });
 
     switchTo(SCENE_LOGIN);
