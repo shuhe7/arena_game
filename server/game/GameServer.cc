@@ -118,7 +118,45 @@ void GameServer::onConnection(const TcpConnectionPtr &conn)
         if(session != nullptr)
         {
             const uint32_t userId = session->userId_;
+            const uint64_t roomId = session->roomId_;
+
             matchmakingService_.cancel(userId);
+
+            if(roomId != 0)
+            {
+                const BattleState* battle = battleService_.find(roomId);
+                if(battle != nullptr)
+                {
+                    const BattleActionResult result = battleService_.forfeit(roomId, userId);
+                    if(result.accepted_)
+                    {
+                        finishBattle(result.state_);
+                    }
+                }
+                else
+                {
+                    const Room* room = roomService_.find(roomId);
+                    if(room != nullptr)
+                    {
+                        const uint32_t opponentUserId = room->firstUserId_ == userId ? room->secondUserId_ : room->firstUserId_;
+                        const uint64_t opponentConnectionId = sessionService_.findConnectionByUserId(opponentConnectionId);
+
+                        const GameMessages::RoomClosedNotification notification{
+                            roomId,
+                            "Opponent disconnected"
+                        };
+
+                        BinaryWriter payload;
+                        if(GameMessages::encode(payload, notification))
+                        {
+                            sendToConnection(opponentConnectionId, GameProtocol::MSG_ROOM_CLOSED_NTF, payload);
+                        }
+
+                        sessionService_.clearRoom(opponentUserId);
+                        roomService_.remove(roomId);
+                    }
+                }
+            }
         }
             
         {
@@ -466,33 +504,7 @@ void GameServer::handleBattleAttack(const TcpConnectionPtr& conn, BinaryReader& 
 
     if(result.finished_)
     {
-        const uint64_t firstConnectionId = sessionService_.findConnectionByUserId(result.state_.firstUserId_);
-        const uint64_t secondConnectionId = sessionService_.findConnectionByUserId(result.state_.secondUserId_);
-
-        PlayerSession* firstSession = sessionService_.findByConnection(firstConnectionId);
-        PlayerSession* secondSession = sessionService_.findByConnection(secondConnectionId);
-
-        if(firstSession != nullptr && secondSession != nullptr)
-        {
-            const BattleEloResult eloResult = BattleService::calculateElo(result.state_, firstSession->elo_, secondSession->elo_);
-
-            if(accountRepository_->updateEloPair(firstSession->userId_, eloResult.firstElo_, secondSession->userId_, eloResult.secondElo_))
-            {
-                firstSession->elo_ = eloResult.firstElo_;
-                secondSession->elo_ = eloResult.secondElo_;
-            }
-            else
-            {
-                LOG_ERROR("%s", "Failed to persist battle ELO\n");
-            }
-        }
-
-        sendBattleResultNotification(result.state_);
-
-        sessionService_.clearRoom(result.state_.firstUserId_);
-        sessionService_.clearRoom(result.state_.secondUserId_);
-        roomService_.remove(result.state_.roomId_);
-        battleService_.remove(result.state_.roomId_);
+        finishBattle(result.state_);
     }
 }
 
@@ -644,4 +656,35 @@ void GameServer::processMatchmakingTick()
             sendToConnection(secondConnectionId, GameProtocol::MSG_MATCH_FOUND_NTF, secondWriter);
         }
     }
+}
+
+void GameServer::finishBattle(const BattleState& state)
+{
+    const uint64_t firstConnectionId = sessionService_.findConnectionByUserId(state.firstUserId_);
+    const uint64_t secondConnectionId = sessionService_.findConnectionByUserId(state.secondUserId_);
+
+    PlayerSession* firstSession = sessionService_.findByConnection(firstConnectionId);
+    PlayerSession* secondSession = sessionService_.findByConnection(secondConnectionId);
+
+    if(firstSession != nullptr && secondSession != nullptr)
+    {
+        const BattleEloResult eloResult = BattleService::calculateElo(state, firstSession->elo_, secondSession->elo_);
+
+        if(accountRepository_->updateEloPair(firstSession->userId_, eloResult.firstElo_, secondSession->userId_, eloResult.secondElo_))
+        {
+            firstSession->elo_ = eloResult.firstElo_;
+            secondSession->elo_ = eloResult.secondElo_;
+        }
+        else
+        {
+            LOG_ERROR("%s", "Failed to persist battle ELO\n");
+        }
+    }
+
+    sendBattleResultNotification(state);
+
+    sessionService_.clearRoom(state.firstUserId_);
+    sessionService_.clearRoom(state.secondUserId_);
+    roomService_.remove(state.roomId_);
+    battleService_.remove(state.roomId_);
 }

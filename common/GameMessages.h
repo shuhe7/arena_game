@@ -116,6 +116,12 @@ namespace GameMessages
         uint32_t playerElo_ = 0;
     };
 
+    struct RoomClosedNotification
+    {
+        uint64_t roomId_ = 0;
+        std::string reason_;
+    };
+
     inline bool encode(BinaryWriter& writer, const LoginRequest& value) 
     {
         return writer.writeString(value.userName_) && writer.writeString(value.password_);
@@ -402,5 +408,16 @@ namespace GameMessages
 
         value.won_ = won != 0;
         return true;
+    }
+
+    inline bool encode(BinaryWriter& writer, const RoomClosedNotification& value)
+    {
+        writer.writeU64(value.roomId_);
+        return writer.writeString(value.reason_);
+    }
+
+    inline bool decode(BinaryReader& reader, RoomClosedNotification& value)
+    {
+        return reader.readU64(value.roomId_) && reader.readString(value.reason_) && reader.eof();
     }
 }

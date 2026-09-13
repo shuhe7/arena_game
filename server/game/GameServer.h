@@ -50,6 +50,8 @@ private:
 
     void processMatchmakingTick();
 
+    void finishBattle(const BattleState& state);
+
     std::unique_ptr<EventLoop> mainLoop_;
     std::unique_ptr<TcpServer> server_;
 

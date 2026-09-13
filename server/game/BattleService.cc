@@ -112,6 +112,32 @@ BattleActionResult BattleService::attack(uint64_t roomId, uint32_t userId)
     return result;
 }
 
+BattleActionResult BattleService::forfeit(uint64_t roomId, uint32_t userId)
+{
+    BattleActionResult result;
+
+    const auto it = battles_.find(roomId);
+    if(it == battles_.end())
+    {
+        return result;
+    }
+
+    BattleState& state = it->second;
+    if(state.finished_ || (userId != state.firstUserId_ && userId != state.secondUserId_))
+    {
+        return result;
+    }
+
+    state.finished_ = true;
+    state.winnerUserId_ = userId == state.firstUserId_ ? state.secondUserId_ : state.firstUserId_;
+    state.activeUserId_ = 0;
+
+    result.accepted_ = true;
+    result.finished_ = true;
+    result.state_ = state;
+    return result;
+}
+
 BattleEloResult BattleService::calculateElo(const BattleState& state, uint32_t firstElo, uint32_t secondElo)
 {
     BattleEloResult result{firstElo, secondElo};
