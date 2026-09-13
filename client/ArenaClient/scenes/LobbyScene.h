@@ -17,6 +17,7 @@ public:
     void showMatchmakingReady();
     void showMatchmakingQueued();
     void showMatchJoinRejected(const QString& errorMessage);
+    void showRoomClosed(const QString& reason);
 signals:
     void matchRequested();
 private slots:

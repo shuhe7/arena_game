@@ -39,6 +39,13 @@ void LobbyScene::showMatchJoinRejected(const QString& errorMessage)
     matchStatusLabel_->setText(QString("MATCH REQUEST FAILED: %1").arg(errorMessage));
 }
 
+void LobbyScene::showRoomClosed(const QString &reason)
+{
+    matchButton_->setEnabled(true);
+    matchButton_->setText("START MATCHMAKING");
+    matchStatusLabel_->setText(QString("MATCH CANCELLED: %1").arg(reason));
+}
+
 void LobbyScene::onMatchButtonClicked()
 {
     matchButton_->setEnabled(false);

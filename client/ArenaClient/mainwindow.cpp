@@ -186,6 +186,21 @@ void MainWindow::initUi()
         heroSelectScene_->showSelectionAccepted();
     });
 
+    client_->registerHandler(GameProtocol::MSG_ROOM_CLOSED_NTF, [this](BinaryReader& reader){
+        GameMessages::RoomClosedNotification notification;
+        if(!GameMessages::decode(reader, notification) || notification.roomId_ != matchedRoomId_)
+        {
+            return;
+        }
+
+        matchedRoomId_ = 0;
+        matchedOpponentName_.clear();
+        matchedOpponentElo_ = 0;
+
+        lobbyScene_->showRoomClosed(QString::fromStdString(notification.reason_));
+        switchTo(SCENE_LOBBY);
+    });
+
     client_->registerHandler(GameProtocol::MSG_BATTLE_START_NTF, [this](BinaryReader& reader){
         GameMessages::BattleStartNotification notification;
         if(!GameMessages::decode(reader, notification))
