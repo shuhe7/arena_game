@@ -139,7 +139,7 @@ void GameServer::onConnection(const TcpConnectionPtr &conn)
                     if(room != nullptr)
                     {
                         const uint32_t opponentUserId = room->firstUserId_ == userId ? room->secondUserId_ : room->firstUserId_;
-                        const uint64_t opponentConnectionId = sessionService_.findConnectionByUserId(opponentConnectionId);
+                        const uint64_t opponentConnectionId = sessionService_.findConnectionByUserId(opponentUserId);
 
                         const GameMessages::RoomClosedNotification notification{
                             roomId,
