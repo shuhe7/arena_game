@@ -213,6 +213,9 @@ void GameServer::onMessage(const TcpConnectionPtr &conn, Buffer *buf, Timestamp 
             case GameProtocol::MSG_BATTLE_ATTACK_REQ:
                 handleBattleAttack(conn, reader);
                 break;
+            case GameProtocol::MSG_MATCH_CANCEL_REQ:
+                handleMatchCancel(conn, reader);
+                break;
             default:
                 break;
         }
@@ -506,6 +509,50 @@ void GameServer::handleBattleAttack(const TcpConnectionPtr& conn, BinaryReader& 
     {
         finishBattle(result.state_);
     }
+}
+
+void GameServer::handleMatchCancel(const TcpConnectionPtr& conn, BinaryReader& reader)
+{
+    GameMessages::MatchCancelRequest request;
+    GameMessages::MatchCancelResponse response;
+
+    if(!GameMessages::decode(reader, request))
+    {
+        response.errorCode_ = GameMessages::ErrorCode::kMalformedPayload;
+        response.errorMessage_ = "Malformed match cancel payload";
+    }
+    else
+    {
+        const PlayerSession* session = sessionService_.findByConnection(conn->id());
+        if(session == nullptr)
+        {
+            response.errorCode_ = GameMessages::ErrorCode::kNotAuthenticated;
+            response.errorMessage_ = "Login is required before cancelling matchmaking";
+        }
+        else if(session->roomId_ != 0)
+        {
+            response.errorCode_ = GameMessages::ErrorCode::kInvalidState;
+            response.errorMessage_ = "Already in a room";
+        }
+        else if(!matchmakingService_.cancel(session->userId_))
+        {
+            response.errorCode_ = GameMessages::ErrorCode::kInvalidState;
+            response.errorMessage_ = "Not in matchmaking queue";
+        }
+        else
+        {
+            response.accepted_ = true;
+        }
+    }
+
+    BinaryWriter writer;
+    if(!GameMessages::encode(writer, response))
+    {
+        LOG_ERROR("Failed to encode match cancel response\n");
+        return;
+    }
+
+    sendToConnection(conn->id(), GameProtocol::MSG_MATCH_CANCEL_RSP, writer);
 }
 
 void GameServer::sendBattleStartNotification(const Room& room)
