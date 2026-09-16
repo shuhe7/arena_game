@@ -142,6 +142,16 @@ void MainWindow::initUi()
         switchTo(SCENE_LOBBY);
     });
 
+    connect(lobbyScene_, &LobbyScene::matchCancelRequested, this, [this](){
+        GameMessages::MatchCancelRequest request;
+        BinaryWriter payload;
+
+        if(GameMessages::encode(payload, request))
+        {
+            client_->sendMessage(GameProtocol::MSG_MATCH_CANCEL_REQ, payload);
+        }
+    });
+
     client_->registerHandler(GameProtocol::MSG_MATCH_JOIN_RSP, [this](BinaryReader& reader){
         GameMessages::MatchJoinResponse response;
         if(!GameMessages::decode(reader, response))
@@ -236,6 +246,25 @@ void MainWindow::initUi()
         setUserInfo(userId_, userName_, notification.playerElo_);
         battleScene_->setMatchInfo(notification.roomId_, userName_, elo_, matchedOpponentName_, matchedOpponentElo_);
         battleScene_->showBattleResult(notification.won_);
+    });
+
+    client_->registerHandler(GameProtocol::MSG_MATCH_CANCEL_RSP, [this](BinaryReader& reader){
+        GameMessages::MatchCancelResponse response;
+        if(!GameMessages::decode(reader, response))
+        {
+            if(stack_->currentWidget() == lobbyScene_)
+            {
+                lobbyScene_->showMatchmakingReady();
+            }
+            return;
+        }
+
+        if(stack_->currentWidget() != lobbyScene_)
+        {
+            return;
+        }
+
+        lobbyScene_->showMatchmakingReady();
     });
 
     switchTo(SCENE_LOGIN);

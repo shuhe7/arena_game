@@ -21,6 +21,7 @@ void LobbyScene::setPlayerInfo(uint32_t userId, const QString &userName, uint32_
 
 void LobbyScene::showMatchmakingReady()
 {
+    matchmakingQueued_ = false;
     matchButton_->setEnabled(true);
     matchButton_->setText("START MATCHMAKING");
     matchStatusLabel_->setText("READY // AWAITING COMMAND");
@@ -28,12 +29,14 @@ void LobbyScene::showMatchmakingReady()
 
 void LobbyScene::showMatchmakingQueued()
 {
-    matchButton_->setEnabled(false);
-    matchButton_->setText("MATCHMAKING...");
+    matchmakingQueued_ = true;
+    matchButton_->setEnabled(true);
+    matchButton_->setText("CANCEL MATCHMAKING");
     matchStatusLabel_->setText("SEARCHING FOR OPPONENT...");
 }
 void LobbyScene::showMatchJoinRejected(const QString& errorMessage)
 {
+    matchmakingQueued_ = false;
     matchButton_->setEnabled(true);
     matchButton_->setText("START MATCHMAKING");
     matchStatusLabel_->setText(QString("MATCH REQUEST FAILED: %1").arg(errorMessage));
@@ -41,6 +44,7 @@ void LobbyScene::showMatchJoinRejected(const QString& errorMessage)
 
 void LobbyScene::showRoomClosed(const QString &reason)
 {
+    matchmakingQueued_ = false;
     matchButton_->setEnabled(true);
     matchButton_->setText("START MATCHMAKING");
     matchStatusLabel_->setText(QString("MATCH CANCELLED: %1").arg(reason));
@@ -48,6 +52,16 @@ void LobbyScene::showRoomClosed(const QString &reason)
 
 void LobbyScene::onMatchButtonClicked()
 {
+    if(matchmakingQueued_)
+    {
+        matchButton_->setEnabled(false);
+        matchButton_->setText("CANCELLING MATCHMAKING...");
+        matchStatusLabel_->setText("CANCELLING MATCHMAKING...");
+
+        emit matchCancelRequested();
+        return;
+    }
+
     matchButton_->setEnabled(false);
     matchButton_->setText("REQUESTING...");
     matchStatusLabel_->setText("REQUESTING MATCH...");

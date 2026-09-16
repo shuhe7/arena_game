@@ -20,6 +20,7 @@ public:
     void showRoomClosed(const QString& reason);
 signals:
     void matchRequested();
+    void matchCancelRequested();
 private slots:
     void onMatchButtonClicked();
 private:
@@ -30,4 +31,6 @@ private:
     QLabel* playerEloLabel_ = nullptr;
     QPushButton* matchButton_ = nullptr;
     QLabel* matchStatusLabel_ = nullptr;
+
+    bool matchmakingQueued_ = false;
 };
